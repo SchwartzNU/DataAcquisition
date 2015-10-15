@@ -1,0 +1,119 @@
+function [] = dendriteOverlapTest(M)
+L = size(M,1);
+
+M_ch1 = squeeze(M(:,:,1));
+M_ch2 = squeeze(M(:,:,2));
+
+figure;
+%original
+M_composite = zeros(L,L,3);
+M_ch1_binary = thresholdMaskImage(M_ch1,0,3,0);
+M_ch2_binary = thresholdMaskImage(M_ch2,0,3,0);
+M_composite(:,:,1) = M_ch1_binary;
+M_composite(:,:,2) = M_ch2_binary;
+
+[fractionWithin, fractionBetween_orig] = bipolarGridImageOverlap(M_ch1_binary,M_ch2_binary,17,17,.4144,50);
+mean(fractionBetween_orig)
+subplot(2,4,1);
+image(M_composite); 
+title(num2str(mean(fractionBetween_orig)));
+set(gca,'xtick',[]);set(gca,'ytick',[]);
+
+%rot 90
+M_composite = zeros(L,L,3);
+M_ch1 = rot90(M_ch1,1);
+M_ch1_binary = thresholdMaskImage(M_ch1,0,3,0);
+M_composite(:,:,1) = M_ch1_binary;
+M_composite(:,:,2) = M_ch2_binary;
+
+[fractionWithin, fractionBetween_rot90] = bipolarGridImageOverlap(M_ch1_binary,M_ch2_binary,17,17,.4144,50);
+mean(fractionBetween_rot90)
+subplot(2,4,2);
+image(M_composite); 
+title(num2str(mean(fractionBetween_rot90)));
+set(gca,'xtick',[]);set(gca,'ytick',[]);
+
+%rot 180
+M_composite = zeros(L,L,3);
+M_ch1 = rot90(M_ch1,2);
+M_ch1_binary = thresholdMaskImage(M_ch1,0,3,0);
+M_composite(:,:,1) = M_ch1_binary;
+M_composite(:,:,2) = M_ch2_binary;
+
+[fractionWithin, fractionBetween_rot180] = bipolarGridImageOverlap(M_ch1_binary,M_ch2_binary,17,17,.4144,50);
+mean(fractionBetween_rot180)
+subplot(2,4,3);
+image(M_composite); 
+title(num2str(mean(fractionBetween_rot180)));
+set(gca,'xtick',[]);set(gca,'ytick',[]);
+
+%rot 270
+M_composite = zeros(L,L,3);
+M_ch1 = rot90(M_ch1,3);
+M_ch1_binary = thresholdMaskImage(M_ch1,0,3,0);
+M_composite(:,:,1) = M_ch1_binary;
+M_composite(:,:,2) = M_ch2_binary;
+
+[fractionWithin, fractionBetween_rot270] = bipolarGridImageOverlap(M_ch1_binary,M_ch2_binary,17,17,.4144,50);
+mean(fractionBetween_rot270)
+subplot(2,4,4);
+image(M_composite); 
+title(num2str(mean(fractionBetween_rot270)));
+set(gca,'xtick',[]);set(gca,'ytick',[]);
+
+%flipped
+M_ch1 = fliplr(M_ch1);
+M_composite = zeros(L,L,3);
+M_ch1_binary = thresholdMaskImage(M_ch1,0,3,0);
+M_ch2_binary = thresholdMaskImage(M_ch2,0,3,0);
+M_composite(:,:,1) = M_ch1_binary;
+M_composite(:,:,2) = M_ch2_binary;
+
+[fractionWithin, fractionBetween_origf] = bipolarGridImageOverlap(M_ch1_binary,M_ch2_binary,17,17,.4144,50);
+subplot(2,4,5);
+image(M_composite); 
+title(num2str(mean(fractionBetween_origf)));
+set(gca,'xtick',[]);set(gca,'ytick',[]);
+
+%rot 90 flipped
+M_composite = zeros(L,L,3);
+M_ch1 = rot90(M_ch1,1);
+M_ch1_binary = thresholdMaskImage(M_ch1,0,3,0);
+M_composite(:,:,1) = M_ch1_binary;
+M_composite(:,:,2) = M_ch2_binary;
+
+[fractionWithin, fractionBetween_rot90f] = bipolarGridImageOverlap(M_ch1_binary,M_ch2_binary,17,17,.4144,50);
+mean(fractionBetween_rot90f)
+subplot(2,4,6);
+image(M_composite); 
+title(num2str(mean(fractionBetween_rot90f)));
+set(gca,'xtick',[]);set(gca,'ytick',[]);
+
+%rot 180 flipped
+M_composite = zeros(L,L,3);
+M_ch1 = rot90(M_ch1,2);
+M_ch1_binary = thresholdMaskImage(M_ch1,0,3,0);
+M_composite(:,:,1) = M_ch1_binary;
+M_composite(:,:,2) = M_ch2_binary;
+
+[fractionWithin, fractionBetween_rot180f] = bipolarGridImageOverlap(M_ch1_binary,M_ch2_binary,17,17,.4144,50);
+mean(fractionBetween_rot180f)
+subplot(2,4,7);
+image(M_composite);
+title(num2str(mean(fractionBetween_rot180f)));
+set(gca,'xtick',[]);set(gca,'ytick',[]);
+
+%rot 270 flipped
+M_composite = zeros(L,L,3);
+M_ch1 = rot90(M_ch1,3);
+M_ch1_binary = thresholdMaskImage(M_ch1,0,3,0);
+M_composite(:,:,1) = M_ch1_binary;
+M_composite(:,:,2) = M_ch2_binary;
+
+[fractionWithin, fractionBetween_rot270f] = bipolarGridImageOverlap(M_ch1_binary,M_ch2_binary,17,17,.4144,50);
+mean(fractionBetween_rot270f)
+subplot(2,4,8);
+image(M_composite);
+title(num2str(mean(fractionBetween_rot270f)));
+set(gca,'xtick',[]);set(gca,'ytick',[]);
+

@@ -1,0 +1,10 @@
+Mouse retina
+	unknown
+	Left Dorsal Nasal
+	Left Dorsal Temporal
+	Left Ventral Nasal
+	Left Ventral Temporal
+	Right Dorsal Nasal
+	Right Dorsal Temporal
+	Right Ventral Nasal
+	Right Ventral Temporal

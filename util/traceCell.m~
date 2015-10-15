@@ -1,0 +1,35 @@
+function segments = traceCell(M)
+
+h = imagesc(M);
+ax = gca;
+colormap(ax,'gray');
+done = 0;
+hold(ax,'on');
+lineIndex = 0;
+curLine = [];
+while ~done    
+    if ~isempty('curLine','var')        
+        set(curLine,'visible','off');
+    end
+    plot(Xcoords,Ycoords,'b');
+    [x,y] = getline;
+    curLine = line(x,y,'color','r');
+    set(curLine,'visible','on');
+    isValid = 0;
+    while ~isValid
+        resp = input('Accept [a] / Delete [d] / Finished [q]: ', 's');
+        if strcmp(resp,'q');
+            isValid = 1;
+            done = 1;
+            return;
+        elseif strcmp(resp,'a');
+            lineIndex = line
+            Xcoords = [Xcoords; x];
+            Ycoords = [Ycoords; y];
+            isValid = 1;
+        elseif strcmp(resp,'d');
+            isValid = 1;
+        end
+    end    
+end
+hold(ax,'off');

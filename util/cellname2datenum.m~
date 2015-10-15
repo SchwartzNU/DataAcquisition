@@ -1,0 +1,5 @@
+function n = cellname2datenum(cellName)
+%cellname is mmddyy followed by rig letter then c then cell number
+%this function gives back the date of the experiment as a datenum
+
+datepart = cellName(1:6);

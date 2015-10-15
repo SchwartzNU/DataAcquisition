@@ -1,0 +1,24 @@
+function [shiftVal, Tstart Tend] = getResponseWindow(S,th)
+%th is a percent of max signal
+S = S./max(abs(S));
+
+[peak, peakLoc] = max(S);
+shiftVal = round(length(S)/2) - peakLoc;
+S = circshift(S,shiftVal);
+
+
+
+Tstart = getThresCross(S(1:peakLoc),th,1);
+Tstart = Tstart(end);
+
+Tend = peakLoc + getThresCross(S(peakLoc:end),th,-1);
+Tend = Tend(1);
+
+
+keyboard;
+
+
+
+
+
+

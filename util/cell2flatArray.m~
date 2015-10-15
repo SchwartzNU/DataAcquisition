@@ -1,0 +1,8 @@
+function V = cell2flatArray(C)
+nCells = length(C);
+for i=1:nCells
+   curCell = C{
+   [r,c] = size( 
+end
+
+

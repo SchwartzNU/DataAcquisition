@@ -1,0 +1,18 @@
+[HR, FAR, HR_opt, FAR_opt, dprime_opt] = ROCanalysis(noise, sig);
+
+Nsteps = 100;
+HR = zeros(1,Nsteps);
+FAR = zeros(1,Nsteps);
+
+T = linspace(min([noise signal]),max([noise signal]),Nsteps);
+
+noiseTrials = length(noise);
+sigTrials = length(sig);
+
+for i=1:Nsteps
+   HR(i) = sum(sig>=T(i))./sigTrials;
+   FAR(i) = sum(noise>=T(i))./sigTrials;   
+end
+
+dprime = norminv(HR) - norminv(FAR);
+[dprime_opt, ind] = max(

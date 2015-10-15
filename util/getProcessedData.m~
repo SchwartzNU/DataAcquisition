@@ -1,0 +1,43 @@
+function [Dmean, D, timeVec, baseline, errorBars] = getProcessedData(node, RespStreamName, lowPassFilter, baselineSubtract, baselineTime, errorBars)
+
+%get pre_points
+[prePoints, sammpleRate] = getPrePoints(node);
+
+%get data
+if ischar(RespStreamName)
+    respChar = RespStreamName;
+else
+    respChar = RespStreamName.toCharArray;
+end
+dataM = riekesuite.getResponseMatrix(node.epochList, respChar);
+
+%end
+%filter
+if ~isempty(lowPassFilter)
+    dataM = LowPassFilter(dataM, lowPassFilter, 1./sammpleRate);
+end
+
+if isempty(basel
+baseline = mean(dataM(:,1:prePoints),2);
+if baselineSubtract
+    dataM_baselineSubtracted = dataM - repmat(baseline,1,size(dataM,2));
+    D = dataM_baselineSubtracted;
+else
+    D = dataM;
+end
+
+Dmean = mean(D,1);
+
+timeVec = ((1:size(D,2))-prePoints)./sammpleRate; 
+
+%error bars
+if ~isempty(errorBars)
+    if strcmp(errorBars, 'sem')
+        errorBars = std(dataM_baselineSubtracted,1)./sqrt(size(dataM_baselineSubtracted,1));
+    elseif strcmp(errorBars, 'sd')
+        errorBars = std(dataM_baselineSubtracted,1);
+    end
+end
+
+%flush
+%node.epochList.flush();
