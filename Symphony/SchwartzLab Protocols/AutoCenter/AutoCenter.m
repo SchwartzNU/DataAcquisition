@@ -2,7 +2,7 @@ classdef AutoCenter < StageProtocol
     
     properties (Constant)
         identifier = 'edu.northwestern.SchwartzLab.AutoCenter'
-        version = 2
+        version = 3
         displayName = 'Auto Center'
     end
     
@@ -14,7 +14,7 @@ classdef AutoCenter < StageProtocol
         
         %in microns, use rigConfig to set microns per pixel
         spotDiameter = 50; %um
-        searchRadius = 200; %um
+        searchDiameter = 200; %um
         numSpots = 30;
         spotTotalTime = 0.5;
         spotOnTime = 0.1;
@@ -32,7 +32,9 @@ classdef AutoCenter < StageProtocol
     
     properties (Hidden)
         spatialFigure
-        positions;
+%         positions
+        shapeData
+        shapeDataColumns
     end
     
     properties (Dependent)
@@ -52,7 +54,7 @@ classdef AutoCenter < StageProtocol
                 case {'spotTotalTime','spotOnTime'}
                     p.units = 's';
                     p.displayTab = 'mostUsed';
-                case {'startX', 'startY', 'spotDiameter','searchRadius'}
+                case {'startX', 'startY', 'spotDiameter','searchDiameter'}
                     p.units = 'um';
                     p.displayTab = 'mostUsed';
                 case 'numSpots'
@@ -71,21 +73,12 @@ classdef AutoCenter < StageProtocol
             % Call the base method.
             prepareRun@StageProtocol(obj);
             
-            %set directions
-            obj.positions = zeros(obj.numSpots, 2);
-            for si = 2:obj.numSpots
-                
-                d = 0;
-                while d < obj.spotDiameter
-                    posPrev = obj.positions(si-1,:);
-                    pos = obj.searchRadius * (randn(1, 2));
-                    d = sqrt(sum((pos - posPrev).^2));
-                end
-                obj.positions(si,:) = pos;
-            end
+            %set positions
+            positions = generatePositions('random',[obj.numSpots, obj.spotDiameter, obj.searchDiameter]);
             
-%             disp(obj.positions)
-                            
+            obj.shapeData = horzcat(positions, obj.intensity * ones(obj.numSpots, 1));
+            obj.shapeDataColumns = {'X','Y','intensity'};
+            
             obj.spatialFigure = obj.openFigure('Spatial Response', obj.amp, 'StartTime', obj.stimStart, 'EndTime', obj.stimEnd,...
                 'SpikeDetectorMode', obj.spikeDetection, 'SpikeThreshold', obj.spikeThreshold);
             
@@ -99,7 +92,9 @@ classdef AutoCenter < StageProtocol
             % Call the base method.
             prepareEpoch@StageProtocol(obj, epoch);
             
-            epoch.addParameter('positions', obj.positions(:));
+%             epoch.addParameter('positions', obj.positions(:));
+            epoch.addParameter('shapeData', obj.shapeData(:));
+            epoch.addParameter('shapeDataColumns', obj.shapeDataColumns);
         end
         
         function preparePresentation(obj, presentation)
@@ -113,13 +108,14 @@ classdef AutoCenter < StageProtocol
             circ.position = [0,0];
             presentation.addStimulus(circ);
             
-            function c = onDuringStim(state, totalTime, onTime, preTime, stimTime, intensity, meanLevel)
+            function c = shapeColor(state, totalTime, onTime, preTime, stimTime, intensity, meanLevel)
                 if state.time > preTime*1e-3 && state.time <= (preTime+stimTime)*1e-3
                     t = state.time - preTime * 1e-3;
                     m = floor(t / totalTime);
                     t = t - m * totalTime; % use the same index as the position below
+                    shapeIndex = m + 1;
                     if t < onTime
-                        c = intensity;
+                        c = intensity(shapeIndex);
                     else
                         c = meanLevel;
                     end
@@ -128,17 +124,22 @@ classdef AutoCenter < StageProtocol
                 end
             end
             
-            controllerOpacity = PropertyController(circ, 'color', @(s)onDuringStim(s, obj.spotTotalTime, obj.spotOnTime, obj.preTime, obj.stimTime, obj.intensity, obj.meanLevel));
             
-            function p = moveSpot(state, pos, totalTime, preTime, stimTime, windowSize, micronsPerPixel)
+            icol = find(not(cellfun('isempty', strfind(obj.shapeDataColumns, 'intensity'))));
+            intensities = obj.shapeData(:,icol);
+            controllerColor = PropertyController(circ, 'color', @(s)shapeColor(s, obj.spotTotalTime, obj.spotOnTime, obj.preTime, obj.stimTime, intensities, obj.meanLevel));
+            presentation.addController(controllerColor);
+            
+            
+            function p = shapePosition(state, pos, totalTime, preTime, stimTime, windowSize, micronsPerPixel)
                 if state.time < preTime*1e-3 || state.time >= (preTime+stimTime)*1e-3
                     p = [NaN, NaN];
 %                     p = [0,0];
-                else
+                else                  
                     t = state.time - preTime * 1e-3;
-                    posIndex = floor(t / totalTime) + 1;
-                    if posIndex <= size(pos,1)
-                        p = [pos(posIndex,1)/micronsPerPixel + windowSize(1)/2, pos(posIndex,2)/micronsPerPixel + windowSize(2)/2];
+                    shapeIndex = floor(t / totalTime) + 1;
+                    if shapeIndex <= size(pos,1)
+                        p = [pos(shapeIndex,1)/micronsPerPixel + windowSize(1)/2, pos(shapeIndex,2)/micronsPerPixel + windowSize(2)/2];
                     else
                         p = [NaN, NaN];
 %                         p = [0,0];
@@ -146,10 +147,14 @@ classdef AutoCenter < StageProtocol
                 end
             end
             mpp = obj.rigConfig.micronsPerPixel;
-            controllerPosition = PropertyController(circ, 'position', @(s)moveSpot(s, obj.positions, ...
+            
+            xcol = find(not(cellfun('isempty', strfind(obj.shapeDataColumns, 'X'))));
+            ycol = find(not(cellfun('isempty', strfind(obj.shapeDataColumns, 'Y'))));
+            positions = obj.shapeData(:,[xcol,ycol]);
+            
+            controllerPosition = PropertyController(circ, 'position', @(s)shapePosition(s, positions, ...
                 obj.spotTotalTime, obj.preTime, obj.stimTime, obj.windowSize, mpp));
             
-            presentation.addController(controllerOpacity);
             presentation.addController(controllerPosition);
             
             preparePresentation@StageProtocol(obj, presentation);

@@ -22,7 +22,6 @@ classdef DriftingGratings < StageProtocol
         cycleHalfWidth = 50; %um
         apertureDiameter = 0; %um
         squareOnFraction = 0.5;
-        centerMaskIntensity = 0;
         
         gratingProfile = 'sine'; %sine or square
         
@@ -207,7 +206,7 @@ classdef DriftingGratings < StageProtocol
                 spot = Ellipse();
                 spot.radiusX = round(obj.apertureDiameter / 2 / obj.rigConfig.micronsPerPixel); %convert to pixels
                 spot.radiusY = spot.radiusX;
-                spot.color = obj.centerMaskIntensity;
+                spot.color = obj.meanLevel;
                 spot.position = [obj.windowSize(1)/2, obj.windowSize(2)/2];
                 presentation.addStimulus(spot);
             end
