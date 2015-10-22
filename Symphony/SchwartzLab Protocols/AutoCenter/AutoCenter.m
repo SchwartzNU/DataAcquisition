@@ -94,7 +94,7 @@ classdef AutoCenter < StageProtocol
             
 %             epoch.addParameter('positions', obj.positions(:));
             epoch.addParameter('shapeData', obj.shapeData(:));
-            epoch.addParameter('shapeDataColumns', obj.shapeDataColumns);
+            epoch.addParameter('shapeDataColumns', strjoin(obj.shapeDataColumns,','));
         end
         
         function preparePresentation(obj, presentation)
@@ -111,10 +111,9 @@ classdef AutoCenter < StageProtocol
             function c = shapeColor(state, totalTime, onTime, preTime, stimTime, intensity, meanLevel)
                 if state.time > preTime*1e-3 && state.time <= (preTime+stimTime)*1e-3
                     t = state.time - preTime * 1e-3;
-                    m = floor(t / totalTime);
-                    t = t - m * totalTime; % use the same index as the position below
-                    shapeIndex = m + 1;
-                    if t < onTime
+                    shapeIndex = floor(t / totalTime) + 1;
+                    t = t - (shapeIndex - 1) * totalTime; % use the same index as the position below
+                    if t < onTime && shapeIndex <= size(intensity, 1)
                         c = intensity(shapeIndex);
                     else
                         c = meanLevel;
