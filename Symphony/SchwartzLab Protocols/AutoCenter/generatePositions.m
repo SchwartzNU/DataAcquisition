@@ -62,12 +62,17 @@ elseif strcmp(mode, 'random')
     width = settings(3);
     positions = zeros(numSpots, 2);
     
-    for si = 2:numSpots
-        d = 0;
-        while d < exclusionDistance
-            posPrev = positions(si-1,:);
-            pos = width * (randn(1, 2));
-            d = sqrt(sum((pos - posPrev).^2));
+    for si = 2:numSpots % let first be [0,0]
+        minDistToOtherSpot = 0; % the minimum space between this and all other spots
+        haltCounter = 0; % don't keep trying forever if input is too difficult
+        while (minDistToOtherSpot < exclusionDistance || distFromCenter > width) && haltCounter < 5000
+            pos = width * randn(1, 2);
+            distFromCenter = sqrt(sum(pos.^2));
+            minDistToOtherSpot = Inf;
+            for os = 1:si
+                minDistToOtherSpot = min(minDistToOtherSpot, sqrt(sum((pos - positions(os,:)).^2)));
+            end
+            haltCounter = haltCounter + 1;
         end
         positions(si,:) = pos;
     end

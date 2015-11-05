@@ -19,9 +19,12 @@ classdef AutoCenter < StageProtocol
         spotTotalTime = 0.5;
         spotOnTime = 0.1;
         
-        responseDelay = 50; %ms
-        
-        intensity = 1.0;
+        numPresentations = 1;
+                      
+        valueMin = 0;
+        valueMax = 1.0;
+        numValues = 2;
+        numValueRepeats = 1;
     end
     
     properties
@@ -35,10 +38,14 @@ classdef AutoCenter < StageProtocol
 %         positions
         shapeData
         shapeDataColumns
+        sessionId
+        epochNum
     end
     
     properties (Dependent)
         stimTime
+        intensity
+        values
     end
     
     methods
@@ -69,17 +76,13 @@ classdef AutoCenter < StageProtocol
         
         
         function prepareRun(obj)
-            global DEMO_MODE;
             % Call the base method.
             prepareRun@StageProtocol(obj);
             
-            %set positions
-            positions = generatePositions('random',[obj.numSpots, obj.spotDiameter, obj.searchDiameter]);
+            obj.sessionId = randi(999999999);
+            obj.epochNum = 0;
             
-            obj.shapeData = horzcat(positions, obj.intensity * ones(obj.numSpots, 1));
-            obj.shapeDataColumns = {'X','Y','intensity'};
-            
-            obj.spatialFigure = obj.openFigure('Spatial Response', obj.amp, 'StartTime', obj.stimStart, 'EndTime', obj.stimEnd,...
+            obj.spatialFigure = obj.openFigure('Shape Response', obj.amp, 'StartTime', obj.stimStart, 'EndTime', obj.stimEnd,...
                 'SpikeDetectorMode', obj.spikeDetection, 'SpikeThreshold', obj.spikeThreshold);
             
 %             obj.openFigure('PSTH', obj.amp, ...
@@ -91,8 +94,46 @@ classdef AutoCenter < StageProtocol
         function prepareEpoch(obj, epoch)
             % Call the base method.
             prepareEpoch@StageProtocol(obj, epoch);
+            % check for previous data
+%             if obj.epochNum > 0
+%                 disp('subs');
+% %                 whos obj.spatialFigure.getOutputData()
+%             end
+            
+            %set positions
+            positions = generatePositions('random', [obj.numSpots, obj.spotDiameter*2, obj.searchDiameter]);
+%             positions = generatePositions('grid', [obj.searchDiameter, round(sqrt(obj.numSpots))]);
+
+            obj.numSpots = size(positions,1); % in case the generatePositions function is imprecise
+            values = linspace(obj.valueMin, obj.valueMax, obj.numValues);
+            positionList = zeros(obj.numValues * obj.numSpots, 3);
+            
+            stream = RandStream('mt19937ar');
+            si = 1; %spot index
+            for repeat = 1:obj.numValueRepeats
+                usedValues = zeros(obj.numSpots, obj.numValues);
+                for l = 1:obj.numValues
+                    positionIndexList = randperm(stream, obj.numSpots);
+                    for i = 1:obj.numSpots
+                        curPosition = positionIndexList(i);
+                        possibleNextValueIndices = find(usedValues(curPosition,:) == 0);
+                        nextValueIndex = possibleNextValueIndices(randi(stream, length(possibleNextValueIndices)));
+                        
+                        positionList(si,:) = [positions(curPosition,:), values(nextValueIndex)];
+                        usedValues(curPosition, nextValueIndex) = 1;
+                        
+                        si = si + 1;
+                    end
+                end
+            end
+            
+            obj.shapeData = positionList;
+            obj.shapeDataColumns = {'X','Y','intensity'};
             
 %             epoch.addParameter('positions', obj.positions(:));
+            obj.epochNum = obj.epochNum + 1;
+            epoch.addParameter('sessionId',obj.sessionId);
+            epoch.addParameter('presentationId',obj.epochNum);
             epoch.addParameter('shapeData', obj.shapeData(:));
             epoch.addParameter('shapeDataColumns', strjoin(obj.shapeDataColumns,','));
         end
@@ -114,7 +155,7 @@ classdef AutoCenter < StageProtocol
                     shapeIndex = floor(t / totalTime) + 1;
                     t = t - (shapeIndex - 1) * totalTime; % use the same index as the position below
                     if t < onTime && shapeIndex <= size(intensity, 1)
-                        c = intensity(shapeIndex);
+                        c = intensity(shapeIndex,1);
                     else
                         c = meanLevel;
                     end
@@ -123,13 +164,10 @@ classdef AutoCenter < StageProtocol
                 end
             end
             
-            
-            icol = find(not(cellfun('isempty', strfind(obj.shapeDataColumns, 'intensity'))));
-            intensities = obj.shapeData(:,icol);
+            col_int = find(not(cellfun('isempty', strfind(obj.shapeDataColumns, 'intensity'))));
+            intensities = obj.shapeData(:,col_int);
             controllerColor = PropertyController(circ, 'color', @(s)shapeColor(s, obj.spotTotalTime, obj.spotOnTime, obj.preTime, obj.stimTime, intensities, obj.meanLevel));
             presentation.addController(controllerColor);
-            
-            
             function p = shapePosition(state, pos, totalTime, preTime, stimTime, windowSize, micronsPerPixel)
                 if state.time < preTime*1e-3 || state.time >= (preTime+stimTime)*1e-3
                     p = [NaN, NaN];
@@ -155,15 +193,24 @@ classdef AutoCenter < StageProtocol
                 obj.spotTotalTime, obj.preTime, obj.stimTime, obj.windowSize, mpp));
             
             presentation.addController(controllerPosition);
-            
             preparePresentation@StageProtocol(obj, presentation);
         end
         
         
         function stimTime = get.stimTime(obj)
-            stimTime = round(obj.spotTotalTime * obj.numSpots * 1e3);
+            % add a bit to the end to make sure we get all the spots
+            stimTime = round((obj.spotTotalTime * obj.numSpots * obj.numValues * obj.numValueRepeats + 1.0)* 1e3);
         end
         
+        function values = get.values(obj)
+            values = linspace(obj.valueMin, obj.valueMax, obj.numValues);
+%             disp(mat2str(values))
+            values = mat2str(values, 2);
+        end
+        
+        function intensity = get.intensity(obj)
+            intensity = obj.valueMax;
+        end
         
         function queueEpoch(obj, epoch)
             % Call the base method to queue the actual epoch.
@@ -182,7 +229,7 @@ classdef AutoCenter < StageProtocol
             
             % Keep queuing until the requested number of averages have been queued.
             if keepQueuing
-                keepQueuing = obj.numEpochsQueued < 1;
+                keepQueuing = obj.numEpochsQueued < obj.numPresentations;
             end
         end
         
@@ -192,7 +239,7 @@ classdef AutoCenter < StageProtocol
             
             % Keep going until the requested number of averages have been completed.
             if keepGoing
-                keepGoing = obj.numEpochsCompleted < 1;
+                keepGoing = obj.numEpochsCompleted < obj.numPresentations;
             end
         end
         
