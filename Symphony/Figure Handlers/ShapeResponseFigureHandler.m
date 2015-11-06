@@ -94,23 +94,25 @@ classdef ShapeResponseFigureHandler < FigureHandler
                 sp = spikeResults.sp;
             end
             
-%             sp = sort(round(rand(50,1) * 2.5 * 10000));
+            %sp = sort(round(rand(10,1) * 2.5 * 10000));
             
             sd = ShapeData(epoch, 'online');
             sd.setSpikes(sp);
             sd.setResponse(responseData);
-            obj.epochData{obj.epochIndex} = sd;
+%             disp(obj.epochIndex)
+            obj.epochData{obj.epochIndex, 1} = sd;
             
 %             obj.epochData{obj.epochIndex}.spikes = sp; 
             
             obj.outputData = processShapeData(obj.epochData);
-            plotShapeData(obj.outputData);
+%             disp(obj.epochData)
+%             disp(obj.outputData)
+            plotShapeData(obj.outputData,'spatial');
         end
         
         
         function clearFigure(obj)
             obj.resetPlots();
-            
             clearFigure@FigureHandler(obj);
         end
         
@@ -120,6 +122,7 @@ classdef ShapeResponseFigureHandler < FigureHandler
         
         
         function resetPlots(obj)
+            obj.outputData = 0;
             obj.epochData = {};
             obj.epochIndex = 0;
         end

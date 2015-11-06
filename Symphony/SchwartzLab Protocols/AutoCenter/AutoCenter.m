@@ -19,6 +19,8 @@ classdef AutoCenter < StageProtocol
         spotTotalTime = 0.5;
         spotOnTime = 0.1;
         
+        refineCenter = 0;
+        
         numPresentations = 1;
                       
         valueMin = 0;
@@ -95,15 +97,25 @@ classdef AutoCenter < StageProtocol
             % Call the base method.
             prepareEpoch@StageProtocol(obj, epoch);
             % check for previous data
-%             if obj.epochNum > 0
-%                 disp('subs');
-% %                 whos obj.spatialFigure.getOutputData()
-%             end
             
-            %set positions
-            positions = generatePositions('random', [obj.numSpots, obj.spotDiameter*2, obj.searchDiameter]);
+            % choose center position and search width
+            center = [0,0];
+            searchDiameterUpdated = obj.searchDiameter;
+            if obj.refineCenter > 0
+                if obj.epochNum > 0
+                    center = obj.spatialFigure.outputData.centerOfMassXY;
+                    searchDiameterUpdated = obj.spatialFigure.outputData.farthestResponseDistance + 1;
+                end
+            end
+            
+            % select positions
+            positions = generatePositions('random', [obj.numSpots, obj.spotDiameter*2, searchDiameterUpdated]);
 %             positions = generatePositions('grid', [obj.searchDiameter, round(sqrt(obj.numSpots))]);
 
+            % add center offset
+            positions = bsxfun(@plus, positions, center);
+
+            % generate intensity values and repeats
             obj.numSpots = size(positions,1); % in case the generatePositions function is imprecise
             values = linspace(obj.valueMin, obj.valueMax, obj.numValues);
             positionList = zeros(obj.numValues * obj.numSpots, 3);
