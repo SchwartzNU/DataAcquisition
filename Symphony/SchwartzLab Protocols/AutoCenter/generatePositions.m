@@ -43,10 +43,10 @@ if strcmp(mode, 'radial')
     % axis equal
     
 elseif strcmp(mode, 'grid')
-    width = settings(1);
+    searchRadius = settings(1);
     countPerDim = settings(2);
     
-    posList = linspace(-.5, .5, countPerDim) * width;
+    posList = linspace(-.5, .5, countPerDim) * searchRadius;
     p = 1;
     positions = [];
     for a = posList
@@ -59,14 +59,15 @@ elseif strcmp(mode, 'grid')
 elseif strcmp(mode, 'random')
     numSpots = settings(1);
     exclusionDistance = settings(2);
-    width = settings(3);
+    searchRadius = settings(3);
+    
     positions = zeros(numSpots, 2);
     
     for si = 2:numSpots % let first be [0,0]
         minDistToOtherSpot = 0; % the minimum space between this and all other spots
         haltCounter = 0; % don't keep trying forever if input is too difficult
-        while (minDistToOtherSpot < exclusionDistance || distFromCenter > width) && haltCounter < 5000
-            pos = width * randn(1, 2);
+        while (minDistToOtherSpot < exclusionDistance || distFromCenter > searchRadius) && haltCounter < 5000
+            pos = searchRadius / 2 * randn(1, 2);
             distFromCenter = sqrt(sum(pos.^2));
             minDistToOtherSpot = Inf;
             for os = 1:si

@@ -104,12 +104,12 @@ classdef AutoCenter < StageProtocol
             if obj.refineCenter > 0
                 if obj.epochNum > 0
                     center = obj.spatialFigure.outputData.centerOfMassXY;
-                    searchDiameterUpdated = obj.spatialFigure.outputData.farthestResponseDistance + 1;
+                    searchDiameterUpdated = 2 * obj.spatialFigure.outputData.farthestResponseDistance + 1;
                 end
             end
             
             % select positions
-            positions = generatePositions('random', [obj.numSpots, obj.spotDiameter*2, searchDiameterUpdated]);
+            positions = generatePositions('random', [obj.numSpots, obj.spotDiameter, searchDiameterUpdated / 2]);
 %             positions = generatePositions('grid', [obj.searchDiameter, round(sqrt(obj.numSpots))]);
 
             % add center offset
