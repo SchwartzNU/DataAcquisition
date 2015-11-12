@@ -19,13 +19,14 @@ classdef AutoCenter < StageProtocol
         spotTotalTime = 0.5;
         spotOnTime = 0.1;
         
+        temporalAlignment = 0;
         refineCenter = 0;
         
         numPresentations = 1;
                       
         valueMin = 0;
         valueMax = 1.0;
-        numValues = 2;
+        numValues = 1;
         numValueRepeats = 1;
     end
     
@@ -96,7 +97,7 @@ classdef AutoCenter < StageProtocol
         function prepareEpoch(obj, epoch)
             % Call the base method.
             prepareEpoch@StageProtocol(obj, epoch);
-            % check for previous data
+            
             
             % choose center position and search width
             center = [0,0];
