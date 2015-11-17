@@ -1,6 +1,7 @@
-
 *.bak
-
 *.m~
-
-*.bak
+/SymphonyAnalysis
+/debug_logs
+/oldTestingFiles
+/tree
+startup.m
