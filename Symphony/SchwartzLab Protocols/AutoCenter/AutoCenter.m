@@ -43,6 +43,7 @@ classdef AutoCenter < StageProtocol
         shapeDataColumns
         sessionId
         epochNum
+        stimTimeOverride
     end
     
     properties (Dependent)
@@ -85,6 +86,8 @@ classdef AutoCenter < StageProtocol
             obj.sessionId = randi(999999999);
             obj.epochNum = 0;
             
+            obj.stimTimeOverride = NaN;
+            
             obj.spatialFigure = obj.openFigure('Shape Response', obj.amp, 'StartTime', obj.stimStart, 'EndTime', obj.stimEnd,...
                 'SpikeDetectorMode', obj.spikeDetection, 'SpikeThreshold', obj.spikeThreshold);
             
@@ -100,7 +103,7 @@ classdef AutoCenter < StageProtocol
             
             if obj.temporalAlignment > 0 && obj.epochNum == 0
                 epochMode = 'temporalAlignment';
-                durations = [1, 1/2, 1/4, 1/8];
+                durations = [1, 0.5, 0.2];
                 numSpotsPerRate = obj.temporalAlignment;
                 diam_ta = 200;
                 obj.shapeDataMatrix = [];
@@ -108,16 +111,18 @@ classdef AutoCenter < StageProtocol
                 tim = 0;
                 for dur = durations
                     for si = 1:numSpotsPerRate
-                        shape = [0, 0, obj.valueMax, tim, tim + dur / 4, diam_ta];
+                        shape = [0, 0, obj.valueMax, tim, tim + dur / 3, diam_ta];
                         obj.shapeDataMatrix = vertcat(obj.shapeDataMatrix, shape);
                         tim = tim + dur;
                     end
                 end
+                obj.stimTimeOverride = round(1000 * (1.0 + tim));
                 obj.shapeDataColumns = {'X','Y','intensity','startTime','endTime','diameter'};
-                disp(obj.shapeDataMatrix)
+%                 disp(obj.shapeDataMatrix)
             
             else % standard search
                 epochMode = 'flashingSpots';
+                obj.stimTimeOverride = NaN;
                 % choose center position and search width
                 center = [0,0];
                 searchDiameterUpdated = obj.searchDiameter;
@@ -245,7 +250,11 @@ classdef AutoCenter < StageProtocol
         
         function stimTime = get.stimTime(obj)
             % add a bit to the end to make sure we get all the spots
-            stimTime = round((obj.spotTotalTime * obj.numSpots * obj.numValues * obj.numValueRepeats + 1.0)* 1e3);
+            if isnan(obj.stimTimeOverride)
+                stimTime = round((obj.spotTotalTime * obj.numSpots * obj.numValues * obj.numValueRepeats + 1.0)* 1e3);
+            else
+                stimTime = obj.stimTimeOverride;
+            end
         end
         
         function values = get.values(obj)
