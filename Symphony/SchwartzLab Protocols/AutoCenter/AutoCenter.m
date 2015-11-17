@@ -9,11 +9,11 @@ classdef AutoCenter < StageProtocol
     properties
         amp
         %times in ms
-        preTime = 250 %will be rounded to account for frame rate
+        preTime = 500 %will be rounded to account for frame rate
         tailTime = 250 %will be rounded to account for frame rate
         
         %in microns, use rigConfig to set microns per pixel
-        spotDiameter = 50; %um
+        spotDiameter = 40; %um
         searchDiameter = 200; %um
         numSpots = 30;
         spotTotalTime = 0.5;
@@ -39,7 +39,7 @@ classdef AutoCenter < StageProtocol
     properties (Hidden)
         spatialFigure
 %         positions
-        shapeData
+        shapeDataMatrix
         shapeDataColumns
         sessionId
         epochNum
@@ -98,56 +98,80 @@ classdef AutoCenter < StageProtocol
             % Call the base method.
             prepareEpoch@StageProtocol(obj, epoch);
             
-            
-            % choose center position and search width
-            center = [0,0];
-            searchDiameterUpdated = obj.searchDiameter;
-            if obj.refineCenter > 0
-                if obj.epochNum > 0
-                    center = obj.spatialFigure.outputData.centerOfMassXY;
-                    searchDiameterUpdated = 2 * obj.spatialFigure.outputData.farthestResponseDistance + 1;
-                end
-            end
-            
-            % select positions
-            positions = generatePositions('random', [obj.numSpots, obj.spotDiameter, searchDiameterUpdated / 2]);
-%             positions = generatePositions('grid', [obj.searchDiameter, round(sqrt(obj.numSpots))]);
+            if obj.temporalAlignment > 0 && obj.epochNum == 0
+                epochMode = 'temporalAlignment';
+                durations = [1, 1/2, 1/4, 1/8];
+                numSpotsPerRate = obj.temporalAlignment;
+                diam_ta = 200;
+                obj.shapeDataMatrix = [];
 
-            % add center offset
-            positions = bsxfun(@plus, positions, center);
-
-            % generate intensity values and repeats
-            obj.numSpots = size(positions,1); % in case the generatePositions function is imprecise
-            values = linspace(obj.valueMin, obj.valueMax, obj.numValues);
-            positionList = zeros(obj.numValues * obj.numSpots, 3);
-            
-            stream = RandStream('mt19937ar');
-            si = 1; %spot index
-            for repeat = 1:obj.numValueRepeats
-                usedValues = zeros(obj.numSpots, obj.numValues);
-                for l = 1:obj.numValues
-                    positionIndexList = randperm(stream, obj.numSpots);
-                    for i = 1:obj.numSpots
-                        curPosition = positionIndexList(i);
-                        possibleNextValueIndices = find(usedValues(curPosition,:) == 0);
-                        nextValueIndex = possibleNextValueIndices(randi(stream, length(possibleNextValueIndices)));
-                        
-                        positionList(si,:) = [positions(curPosition,:), values(nextValueIndex)];
-                        usedValues(curPosition, nextValueIndex) = 1;
-                        
-                        si = si + 1;
+                tim = 0;
+                for dur = durations
+                    for si = 1:numSpotsPerRate
+                        shape = [0, 0, obj.maxValue, tim, tim + dur / 4, diam_ta];
+                        obj.shapeDataMatrix = vertcat(obj.shapeDataMatrix, shape);
+                        tim = tim + dur;
                     end
                 end
-            end
+                obj.shapeDataColumns = {'X','Y','intensity','startTime','endTime','diameter'};
             
-            obj.shapeData = positionList;
-            obj.shapeDataColumns = {'X','Y','intensity'};
+            else % standard search
+                epochMode = 'flashingSpots';
+                % choose center position and search width
+                center = [0,0];
+                searchDiameterUpdated = obj.searchDiameter;
+                if obj.refineCenter > 0
+                    if obj.epochNum > 0
+                        center = obj.spatialFigure.outputData.centerOfMassXY;
+                        searchDiameterUpdated = 2 * obj.spatialFigure.outputData.farthestResponseDistance + 1;
+                    end
+                end
+
+                % select positions
+                positions = generatePositions('random', [obj.numSpots, obj.spotDiameter, searchDiameterUpdated / 2]);
+    %             positions = generatePositions('grid', [obj.searchDiameter, round(sqrt(obj.numSpots))]);
+
+                % add center offset
+                positions = bsxfun(@plus, positions, center);
+
+                % generate intensity values and repeats
+                obj.numSpots = size(positions,1); % in case the generatePositions function is imprecise
+                values = linspace(obj.valueMin, obj.valueMax, obj.numValues);
+                positionList = zeros(obj.numValues * obj.numSpots, 3);
+                starts = zeros(obj.numSpots, 1);
+                stream = RandStream('mt19937ar');
+                
+                si = 1; %spot index
+                for repeat = 1:obj.numValueRepeats
+                    usedValues = zeros(obj.numSpots, obj.numValues);
+                    for l = 1:obj.numValues
+                        positionIndexList = randperm(stream, obj.numSpots);
+                        for i = 1:obj.numSpots
+                            curPosition = positionIndexList(i);
+                            possibleNextValueIndices = find(usedValues(curPosition,:) == 0);
+                            nextValueIndex = possibleNextValueIndices(randi(stream, length(possibleNextValueIndices)));
+
+                            positionList(si,:) = [positions(curPosition,:), values(nextValueIndex)];
+                            usedValues(curPosition, nextValueIndex) = 1;
+                            
+                            starts(si) = (si - 1) * obj.spotOnTime;
+
+                            si = si + 1;
+                        end
+                    end
+                end
+                diams = obj.spotDiameter * ones(obj.numSpots, 1);
+                ends = starts + obj.spotOnTime;
+                obj.shapeDataMatrix = horzcat(positionList, starts, ends, diams);
+                obj.shapeDataColumns = {'X','Y','intensity','startTime','endTime','diameter'};
+            end
             
 %             epoch.addParameter('positions', obj.positions(:));
             obj.epochNum = obj.epochNum + 1;
             epoch.addParameter('sessionId',obj.sessionId);
             epoch.addParameter('presentationId',obj.epochNum);
-            epoch.addParameter('shapeData', obj.shapeData(:));
+            epoch.addParameter('epochMode',epochMode);
+            epoch.addParameter('shapeDataMatrix', obj.shapeDataMatrix(:));
             epoch.addParameter('shapeDataColumns', strjoin(obj.shapeDataColumns,','));
         end
         
@@ -162,50 +186,58 @@ classdef AutoCenter < StageProtocol
             circ.position = [0,0];
             presentation.addStimulus(circ);
             
-            function c = shapeColor(state, totalTime, onTime, preTime, stimTime, intensity, meanLevel)
-                if state.time > preTime*1e-3 && state.time <= (preTime+stimTime)*1e-3
-                    t = state.time - preTime * 1e-3;
-                    shapeIndex = floor(t / totalTime) + 1;
-                    t = t - (shapeIndex - 1) * totalTime; % use the same index as the position below
-                    if t < onTime && shapeIndex <= size(intensity, 1)
-                        c = intensity(shapeIndex,1);
-                    else
-                        c = meanLevel;
-                    end
+            % GENERIC controller
+            function c = shapeController(state, preTime, baseLevel, startTime, endTime, shapeData_someColumns, controllerIndex)
+                % controllerIndex is to have multiple shapes simultaneously
+                t = state.time - preTime * 1e-3;
+                activeNow = (t > startTime & t < endTime);
+                if any(activeNow)
+                    c = shapeData_someColumns(activeNow(controllerIndex));
                 else
-                    c = meanLevel;
+                    c = baseLevel;
                 end
             end
             
-            col_int = find(not(cellfun('isempty', strfind(obj.shapeDataColumns, 'intensity'))));
-            intensities = obj.shapeData(:,col_int);
-            controllerColor = PropertyController(circ, 'color', @(s)shapeColor(s, obj.spotTotalTime, obj.spotOnTime, obj.preTime, obj.stimTime, intensities, obj.meanLevel));
-            presentation.addController(controllerColor);
-            function p = shapePosition(state, pos, totalTime, preTime, stimTime, windowSize, micronsPerPixel)
-                if state.time < preTime*1e-3 || state.time >= (preTime+stimTime)*1e-3
-                    p = [NaN, NaN];
-%                     p = [0,0];
-                else                  
-                    t = state.time - preTime * 1e-3;
-                    shapeIndex = floor(t / totalTime) + 1;
-                    if shapeIndex <= size(pos,1)
-                        p = [pos(shapeIndex,1)/micronsPerPixel + windowSize(1)/2, pos(shapeIndex,2)/micronsPerPixel + windowSize(2)/2];
-                    else
-                        p = [NaN, NaN];
-%                         p = [0,0];
-                    end
-                end
-            end
+            col_startTime = not(cellfun('isempty', strfind(obj.shapeDataColumns, 'startTime')));
+            col_endTime = not(cellfun('isempty', strfind(obj.shapeDataColumns, 'endTime')));
+%             TODO: change epoch property shapeData to shapeDataMatrix in
+%             analysis
+            
+            % intensity
+            col_intensity = not(cellfun('isempty', strfind(obj.shapeDataColumns, 'intensity')));
+            controllerIntensity = PropertyController(circ, 'color', @(s)shapeController(s, obj.preTime, obj.stimTime, obj.meanLevel, ...
+                                                    obj.shapeDataMatrix(:,col_startTime), ...
+                                                    obj.shapeDataMatrix(:,col_endTime), ...
+                                                    obj.shapeDataMatrix(:,col_intensity), 1));
+            presentation.addController(controllerIntensity);
+            
+            % diameter X
+            col_diameter = not(cellfun('isempty', strfind(obj.shapeDataColumns, 'diameter')));
+            controllerDiameterX = PropertyController(circ, 'radiusX', @(s)shapeController(s, obj.preTime, obj.stimTime, obj.meanLevel, ...
+                                                    obj.shapeDataMatrix(:,col_startTime), ...
+                                                    obj.shapeDataMatrix(:,col_endTime), ...
+                                                    obj.shapeDataMatrix(:,col_diameter) / 2, 1));
+            presentation.addController(controllerDiameterX);
+            
+            % diameter Y
+            controllerDiameterY = PropertyController(circ, 'radiusY', @(s)shapeController(s, obj.preTime, obj.stimTime, obj.meanLevel, ...
+                                                    obj.shapeDataMatrix(:,col_startTime), ...
+                                                    obj.shapeDataMatrix(:,col_endTime), ...
+                                                    obj.shapeDataMatrix(:,col_diameter) / 2, 1));
+            presentation.addController(controllerDiameterY);
+            
+            % position
             mpp = obj.rigConfig.micronsPerPixel;
-            
-            xcol = find(not(cellfun('isempty', strfind(obj.shapeDataColumns, 'X'))));
-            ycol = find(not(cellfun('isempty', strfind(obj.shapeDataColumns, 'Y'))));
-            positions = obj.shapeData(:,[xcol,ycol]);
-            
-            controllerPosition = PropertyController(circ, 'position', @(s)shapePosition(s, positions, ...
-                obj.spotTotalTime, obj.preTime, obj.stimTime, obj.windowSize, mpp));
-            
+            poscols = not(cellfun('isempty', strfind(obj.shapeDataColumns, 'X'))) || ...
+                      not(cellfun('isempty', strfind(obj.shapeDataColumns, 'Y')));
+            positions = obj.shapeDataMatrix(:,poscols);
+            positions_transformed = [positions(:,1)./mpp + obj.windowSize(1)/2, positions(:,2)./mpp + obj.windowSize(2)/2];
+            controllerPosition = PropertyController(circ, 'color', @(s)shapeController(s, obj.preTime, obj.stimTime, [NaN, NaN], ...
+                                                    obj.shapeDataMatrix(:,col_startTime), ...
+                                                    obj.shapeDataMatrix(:,col_endTime), ...
+                                                    positions_transformed, 1));
             presentation.addController(controllerPosition);
+            
             preparePresentation@StageProtocol(obj, presentation);
         end
         
