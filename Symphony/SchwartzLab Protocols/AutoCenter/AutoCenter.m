@@ -43,7 +43,6 @@ classdef AutoCenter < StageProtocol
         shapeDataColumns
         sessionId
         epochNum
-        stimTimeOverride
     end
     
     properties (Dependent)
@@ -81,12 +80,10 @@ classdef AutoCenter < StageProtocol
         
         function prepareRun(obj)
             % Call the base method.
-            prepareRun@StageProtocol(obj);
+            
             
             obj.sessionId = randi(999999999);
             obj.epochNum = 0;
-            
-            obj.stimTimeOverride = NaN;
             
             obj.spatialFigure = obj.openFigure('Shape Response', obj.amp, 'StartTime', obj.stimStart, 'EndTime', obj.stimEnd,...
                 'SpikeDetectorMode', obj.spikeDetection, 'SpikeThreshold', obj.spikeThreshold);
@@ -95,13 +92,17 @@ classdef AutoCenter < StageProtocol
 %                 'StartTime', obj.stimStart, 'EndTime', obj.stimEnd, ...
 %                 'SpikeDetectorMode', obj.spikeDetection, 'SpikeThreshold', obj.spikeThreshold);
             
+            prepareRun@StageProtocol(obj);
+
         end
         
         function prepareEpoch(obj, epoch)
             % Call the base method.
+            obj.epochNum = obj.epochNum + 1;
+            
             prepareEpoch@StageProtocol(obj, epoch);
             
-            if obj.temporalAlignment > 0 && obj.epochNum == 0
+            if obj.temporalAlignment > 0 && obj.epochNum == 1
                 epochMode = 'temporalAlignment';
                 durations = [1, 0.5, 0.2];
                 numSpotsPerRate = obj.temporalAlignment;
@@ -116,13 +117,13 @@ classdef AutoCenter < StageProtocol
                         tim = tim + dur;
                     end
                 end
-                obj.stimTimeOverride = round(1000 * (1.0 + tim));
+%                 obj.stimTimeSaved = round(1000 * (1.0 + tim));
                 obj.shapeDataColumns = {'X','Y','intensity','startTime','endTime','diameter'};
 %                 disp(obj.shapeDataMatrix)
             
             else % standard search
                 epochMode = 'flashingSpots';
-                obj.stimTimeOverride = NaN;
+                
                 % choose center position and search width
                 center = [0,0];
                 searchDiameterUpdated = obj.searchDiameter;
@@ -166,12 +167,15 @@ classdef AutoCenter < StageProtocol
                 end
                 diams = obj.spotDiameter * ones(obj.numSpots, 1);
                 ends = starts + obj.spotOnTime;
+                
+%                 obj.stimTimeSaved = round(1000 * (ends(end) + 1.0));
+                
                 obj.shapeDataMatrix = horzcat(positionList, starts, ends, diams);
                 obj.shapeDataColumns = {'X','Y','intensity','startTime','endTime','diameter'};
             end
             
 %             epoch.addParameter('positions', obj.positions(:));
-            obj.epochNum = obj.epochNum + 1;
+
             epoch.addParameter('sessionId',obj.sessionId);
             epoch.addParameter('presentationId',obj.epochNum);
             epoch.addParameter('epochMode',epochMode);
@@ -250,11 +254,19 @@ classdef AutoCenter < StageProtocol
         
         function stimTime = get.stimTime(obj)
             % add a bit to the end to make sure we get all the spots
-            if isnan(obj.stimTimeOverride)
-                stimTime = round((obj.spotTotalTime * obj.numSpots * obj.numValues * obj.numValueRepeats + 1.0)* 1e3);
+            
+            en = obj.epochNum
+            
+            if obj.temporalAlignment > 0 & isempty(obj.epochNum)
+                stimTime = round(1000 * (obj.temporalAlignment * 2.0 + 1.0));
+            elseif obj.temporalAlignment > 0 & obj.epochNum == 0
+                stimTime = round(1000 * (obj.temporalAlignment * 2.0 + 1.0));
+            elseif obj.temporalAlignment > 0 & obj.epochNum == 1
+                stimTime = round(1000 * (obj.temporalAlignment * 2.0 + 1.0));
             else
-                stimTime = obj.stimTimeOverride;
+                stimTime = round(1000 * (obj.spotTotalTime * obj.numSpots * obj.numValues * obj.numValueRepeats + 1.0));
             end
+            stimTime
         end
         
         function values = get.values(obj)
