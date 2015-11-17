@@ -108,23 +108,22 @@ classdef AutoCenter < StageProtocol
                 tim = 0;
                 for dur = durations
                     for si = 1:numSpotsPerRate
-                        shape = [0, 0, obj.maxValue, tim, tim + dur / 4, diam_ta];
+                        shape = [0, 0, obj.valueMax, tim, tim + dur / 4, diam_ta];
                         obj.shapeDataMatrix = vertcat(obj.shapeDataMatrix, shape);
                         tim = tim + dur;
                     end
                 end
                 obj.shapeDataColumns = {'X','Y','intensity','startTime','endTime','diameter'};
+                disp(obj.shapeDataMatrix)
             
             else % standard search
                 epochMode = 'flashingSpots';
                 % choose center position and search width
                 center = [0,0];
                 searchDiameterUpdated = obj.searchDiameter;
-                if obj.refineCenter > 0
-                    if obj.epochNum > 0
-                        center = obj.spatialFigure.outputData.centerOfMassXY;
-                        searchDiameterUpdated = 2 * obj.spatialFigure.outputData.farthestResponseDistance + 1;
-                    end
+                if obj.refineCenter > 0 && obj.epochNum > 0 && obj.spatialFigure.outputData.validSearchResult == 1
+                    center = obj.spatialFigure.outputData.centerOfMassXY;
+                    searchDiameterUpdated = 2 * obj.spatialFigure.outputData.farthestResponseDistance + 1;
                 end
 
                 % select positions
@@ -154,7 +153,7 @@ classdef AutoCenter < StageProtocol
                             positionList(si,:) = [positions(curPosition,:), values(nextValueIndex)];
                             usedValues(curPosition, nextValueIndex) = 1;
                             
-                            starts(si) = (si - 1) * obj.spotOnTime;
+                            starts(si) = (si - 1) * obj.spotTotalTime;
 
                             si = si + 1;
                         end
@@ -186,13 +185,15 @@ classdef AutoCenter < StageProtocol
             circ.position = [0,0];
             presentation.addStimulus(circ);
             
+            
             % GENERIC controller
             function c = shapeController(state, preTime, baseLevel, startTime, endTime, shapeData_someColumns, controllerIndex)
                 % controllerIndex is to have multiple shapes simultaneously
                 t = state.time - preTime * 1e-3;
                 activeNow = (t > startTime & t < endTime);
                 if any(activeNow)
-                    c = shapeData_someColumns(activeNow(controllerIndex));
+                    actives = find(activeNow);
+                    c = shapeData_someColumns(actives(controllerIndex),:);
                 else
                     c = baseLevel;
                 end
@@ -205,7 +206,7 @@ classdef AutoCenter < StageProtocol
             
             % intensity
             col_intensity = not(cellfun('isempty', strfind(obj.shapeDataColumns, 'intensity')));
-            controllerIntensity = PropertyController(circ, 'color', @(s)shapeController(s, obj.preTime, obj.stimTime, obj.meanLevel, ...
+            controllerIntensity = PropertyController(circ, 'color', @(s)shapeController(s, obj.preTime, obj.meanLevel, ...
                                                     obj.shapeDataMatrix(:,col_startTime), ...
                                                     obj.shapeDataMatrix(:,col_endTime), ...
                                                     obj.shapeDataMatrix(:,col_intensity), 1));
@@ -213,14 +214,14 @@ classdef AutoCenter < StageProtocol
             
             % diameter X
             col_diameter = not(cellfun('isempty', strfind(obj.shapeDataColumns, 'diameter')));
-            controllerDiameterX = PropertyController(circ, 'radiusX', @(s)shapeController(s, obj.preTime, obj.stimTime, obj.meanLevel, ...
+            controllerDiameterX = PropertyController(circ, 'radiusX', @(s)shapeController(s, obj.preTime, 100, ...
                                                     obj.shapeDataMatrix(:,col_startTime), ...
                                                     obj.shapeDataMatrix(:,col_endTime), ...
                                                     obj.shapeDataMatrix(:,col_diameter) / 2, 1));
             presentation.addController(controllerDiameterX);
             
             % diameter Y
-            controllerDiameterY = PropertyController(circ, 'radiusY', @(s)shapeController(s, obj.preTime, obj.stimTime, obj.meanLevel, ...
+            controllerDiameterY = PropertyController(circ, 'radiusY', @(s)shapeController(s, obj.preTime, 100, ...
                                                     obj.shapeDataMatrix(:,col_startTime), ...
                                                     obj.shapeDataMatrix(:,col_endTime), ...
                                                     obj.shapeDataMatrix(:,col_diameter) / 2, 1));
@@ -228,11 +229,11 @@ classdef AutoCenter < StageProtocol
             
             % position
             mpp = obj.rigConfig.micronsPerPixel;
-            poscols = not(cellfun('isempty', strfind(obj.shapeDataColumns, 'X'))) || ...
+            poscols = not(cellfun('isempty', strfind(obj.shapeDataColumns, 'X'))) | ...
                       not(cellfun('isempty', strfind(obj.shapeDataColumns, 'Y')));
             positions = obj.shapeDataMatrix(:,poscols);
             positions_transformed = [positions(:,1)./mpp + obj.windowSize(1)/2, positions(:,2)./mpp + obj.windowSize(2)/2];
-            controllerPosition = PropertyController(circ, 'color', @(s)shapeController(s, obj.preTime, obj.stimTime, [NaN, NaN], ...
+            controllerPosition = PropertyController(circ, 'position', @(s)shapeController(s, obj.preTime, [0, 0], ...
                                                     obj.shapeDataMatrix(:,col_startTime), ...
                                                     obj.shapeDataMatrix(:,col_endTime), ...
                                                     positions_transformed, 1));

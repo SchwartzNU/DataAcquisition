@@ -94,7 +94,7 @@ classdef ShapeResponseFigureHandler < FigureHandler
                 sp = spikeResults.sp;
             end
             
-            %sp = sort(round(rand(10,1) * 2.5 * 10000));
+%             sp = sort(round(rand(10,1) * 2.5 * 10000));
             
             sd = ShapeData(epoch, 'online');
             sd.setSpikes(sp);
