@@ -66,7 +66,7 @@ elseif strcmp(mode, 'random')
     for si = 2:numSpots % let first be [0,0]
         minDistToOtherSpot = 0; % the minimum space between this and all other spots
         haltCounter = 0; % don't keep trying forever if input is too difficult
-        while (minDistToOtherSpot < exclusionDistance || distFromCenter > searchRadius) && haltCounter < 5000
+        while (minDistToOtherSpot < exclusionDistance || distFromCenter > searchRadius) && haltCounter < 100
             pos = searchRadius / 2 * randn(1, 2);
             distFromCenter = sqrt(sum(pos.^2));
             minDistToOtherSpot = Inf;
