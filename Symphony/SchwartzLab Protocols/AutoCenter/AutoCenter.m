@@ -254,9 +254,7 @@ classdef AutoCenter < StageProtocol
         
         function stimTime = get.stimTime(obj)
             % add a bit to the end to make sure we get all the spots
-            
-%             en = obj.epochNum
-            
+          
             if obj.temporalAlignment > 0 & isempty(obj.epochNum)
                 stimTime = round(1000 * (obj.temporalAlignment * 2.0 + 1.0));
             elseif obj.temporalAlignment > 0 & obj.epochNum <= 1
@@ -264,7 +262,6 @@ classdef AutoCenter < StageProtocol
             else
                 stimTime = round(1000 * (obj.spotTotalTime * obj.numSpots * obj.numValues * obj.numValueRepeats + 1.0));
             end
-%             stimTime
         end
         
         function values = get.values(obj)

@@ -1,5 +1,6 @@
 *.bak
 *.m~
+*.asv
 /SymphonyAnalysis
 /debug_logs
 /oldTestingFiles
