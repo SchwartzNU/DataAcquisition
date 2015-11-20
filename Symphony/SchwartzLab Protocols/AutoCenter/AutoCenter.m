@@ -9,12 +9,12 @@ classdef AutoCenter < StageProtocol
     properties
         amp
         %times in ms
-        preTime = 500 %will be rounded to account for frame rate
+        preTime = 250 %will be rounded to account for frame rate
         tailTime = 250 %will be rounded to account for frame rate
         
         %in microns, use rigConfig to set microns per pixel
-        spotDiameter = 40; %um
-        searchDiameter = 200; %um
+        spotDiameter = 30; %um
+        searchDiameter = 250; %um
         numSpots = 30;
         spotTotalTime = 0.5;
         spotOnTime = 0.1;
@@ -82,7 +82,7 @@ classdef AutoCenter < StageProtocol
             % Call the base method.
             
             
-            obj.sessionId = randi(999999999);
+            obj.sessionId = regexprep(num2str(fix(clock),'%1d'),' +',''); % this is how you get a datetime string in MATLAB
             obj.epochNum = 0;
             
             obj.spatialFigure = obj.openFigure('Shape Response', obj.amp, 'StartTime', obj.stimStart, 'EndTime', obj.stimEnd,...
@@ -128,8 +128,10 @@ classdef AutoCenter < StageProtocol
                 center = [0,0];
                 searchDiameterUpdated = obj.searchDiameter;
                 if obj.refineCenter > 0 && obj.epochNum > 0 && obj.spatialFigure.outputData.validSearchResult == 1
-                    center = obj.spatialFigure.outputData.centerOfMassXY;
-                    searchDiameterUpdated = 2 * obj.spatialFigure.outputData.farthestResponseDistance + 1;
+                    gfp = obj.spatialFigure.outputData.gaussianFitParams;
+                    
+                    center = [gfp('centerX'), gfp('centerY')];
+                    searchDiameterUpdated = 3 * max([gfp('sigma2X'), gfp('sigma2Y')]) + 1;
                 end
 
                 % select positions
@@ -165,7 +167,7 @@ classdef AutoCenter < StageProtocol
                         end
                     end
                 end
-                diams = obj.spotDiameter * ones(obj.numSpots, 1);
+                diams = obj.spotDiameter * ones(length(starts), 1);
                 ends = starts + obj.spotOnTime;
                 
 %                 obj.stimTimeSaved = round(1000 * (ends(end) + 1.0));
