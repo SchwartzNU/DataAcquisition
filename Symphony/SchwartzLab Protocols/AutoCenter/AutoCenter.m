@@ -110,8 +110,8 @@ classdef AutoCenter < StageProtocol
                 obj.shapeDataMatrix = [];
 
                 tim = 0;
-                for dur = durations
-                    for si = 1:numSpotsPerRate
+                for si = 1:numSpotsPerRate
+                    for dur = durations
                         shape = [0, 0, obj.valueMax, tim, tim + dur / 3, diam_ta];
                         obj.shapeDataMatrix = vertcat(obj.shapeDataMatrix, shape);
                         tim = tim + dur;
