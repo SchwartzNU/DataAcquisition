@@ -118,6 +118,7 @@ classdef AutoCenter < StageProtocol
             runConfig = generateShapeStimulus(mode, p, obj.shapeResponseFigure.analysisData);
             
             obj.autoStimTime = runConfig.stimTime;
+            obj.autoContinueRun = runConfig.autoContinueRun;
             
             epoch.addParameter('sessionId',obj.sessionId);
             epoch.addParameter('presentationId',obj.epochNum);
