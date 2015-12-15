@@ -22,7 +22,7 @@ classdef ShapeResponseFigureHandler < FigureHandler
         Ntrials
         baselineRate
         
-        outputData
+        analysisData
         epochData
     end
     
@@ -104,10 +104,10 @@ classdef ShapeResponseFigureHandler < FigureHandler
             
 %             obj.epochData{obj.epochIndex}.spikes = sp; 
             
-            obj.outputData = processShapeData(obj.epochData);
+            obj.analysisData = processShapeData(obj.epochData);
 %             disp(obj.epochData)
 %             disp(obj.outputData)
-            plotShapeData(obj.outputData,'spatial');
+            plotShapeData(obj.analysisData, 'spatial');
         end
         
         

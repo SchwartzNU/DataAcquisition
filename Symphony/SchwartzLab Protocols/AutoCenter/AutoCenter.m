@@ -19,11 +19,8 @@ classdef AutoCenter < StageProtocol
         spotTotalTime = 0.5;
         spotOnTime = 0.1;
         
-        temporalAlignment = 0;
-        refineCenter = 0;
-        
-        numPresentations = 1;
-                      
+        runTimeSeconds = 60;
+                                     
         valueMin = 0;
         valueMax = 1.0;
         numValues = 1;
@@ -35,14 +32,14 @@ classdef AutoCenter < StageProtocol
         interpulseInterval = 0;
     end
     
-    
     properties (Hidden)
-        spatialFigure
+        shapeResponseFigure
 %         positions
         shapeDataMatrix
         shapeDataColumns
         sessionId
         epochNum
+        autoContinueRun = 1;
     end
     
     properties (Dependent)
@@ -85,7 +82,7 @@ classdef AutoCenter < StageProtocol
             obj.sessionId = regexprep(num2str(fix(clock),'%1d'),' +',''); % this is how you get a datetime string in MATLAB
             obj.epochNum = 0;
             
-            obj.spatialFigure = obj.openFigure('Shape Response', obj.amp, 'StartTime', obj.stimStart, 'EndTime', obj.stimEnd,...
+            obj.shapeResponseFigure = obj.openFigure('Shape Response', obj.amp, 'StartTime', obj.stimStart, 'EndTime', obj.stimEnd,...
                 'SpikeDetectorMode', obj.spikeDetection, 'SpikeThreshold', obj.spikeThreshold);
             
 %             obj.openFigure('PSTH', obj.amp, ...
@@ -102,87 +99,31 @@ classdef AutoCenter < StageProtocol
             
             prepareEpoch@StageProtocol(obj, epoch);
             
-            if obj.temporalAlignment > 0 && obj.epochNum == 1
-                epochMode = 'temporalAlignment';
-                durations = [1, 0.6, 0.4];
-                numSpotsPerRate = obj.temporalAlignment;
-                diam_ta = 100;
-                obj.shapeDataMatrix = [];
-
-                tim = 0;
-                for si = 1:numSpotsPerRate
-                    for dur = durations
-                        shape = [0, 0, obj.valueMax, tim, tim + dur / 3, diam_ta];
-                        obj.shapeDataMatrix = vertcat(obj.shapeDataMatrix, shape);
-                        tim = tim + dur;
-                    end
-                end
-%                 obj.stimTimeSaved = round(1000 * (1.0 + tim));
-                obj.shapeDataColumns = {'X','Y','intensity','startTime','endTime','diameter'};
-%                 disp(obj.shapeDataMatrix)
-            
-            else % standard search
-                epochMode = 'flashingSpots';
-                
-                % choose center position and search width
-                center = [0,0];
-                searchDiameterUpdated = obj.searchDiameter;
-                if obj.refineCenter > 0 && obj.epochNum > 0 && obj.spatialFigure.outputData.validSearchResult == 1
-                    gfp = obj.spatialFigure.outputData.gaussianFitParams;
-                    
-                    center = [gfp('centerX'), gfp('centerY')];
-                    searchDiameterUpdated = 3 * max([gfp('sigma2X'), gfp('sigma2Y')]) + 1;
-                end
-
-                % select positions
-                positions = generatePositions('random', [obj.numSpots, obj.spotDiameter, searchDiameterUpdated / 2]);
-    %             positions = generatePositions('grid', [obj.searchDiameter, round(sqrt(obj.numSpots))]);
-
-                % add center offset
-                positions = bsxfun(@plus, positions, center);
-
-                % generate intensity values and repeats
-                obj.numSpots = size(positions,1); % in case the generatePositions function is imprecise
-                values = linspace(obj.valueMin, obj.valueMax, obj.numValues);
-                positionList = zeros(obj.numValues * obj.numSpots, 3);
-                starts = zeros(obj.numSpots, 1);
-                stream = RandStream('mt19937ar');
-                
-                si = 1; %spot index
-                for repeat = 1:obj.numValueRepeats
-                    usedValues = zeros(obj.numSpots, obj.numValues);
-                    for l = 1:obj.numValues
-                        positionIndexList = randperm(stream, obj.numSpots);
-                        for i = 1:obj.numSpots
-                            curPosition = positionIndexList(i);
-                            possibleNextValueIndices = find(usedValues(curPosition,:) == 0);
-                            nextValueIndex = possibleNextValueIndices(randi(stream, length(possibleNextValueIndices)));
-
-                            positionList(si,:) = [positions(curPosition,:), values(nextValueIndex)];
-                            usedValues(curPosition, nextValueIndex) = 1;
-                            
-                            starts(si) = (si - 1) * obj.spotTotalTime;
-
-                            si = si + 1;
-                        end
-                    end
-                end
-                diams = obj.spotDiameter * ones(length(starts), 1);
-                ends = starts + obj.spotOnTime;
-                
-%                 obj.stimTimeSaved = round(1000 * (ends(end) + 1.0));
-                
-                obj.shapeDataMatrix = horzcat(positionList, starts, ends, diams);
-                obj.shapeDataColumns = {'X','Y','intensity','startTime','endTime','diameter'};
-            end
-            
 %             epoch.addParameter('positions', obj.positions(:));
-
+            p = struct();
+            p.spotDiameter = obj.spotDiameter; %um
+            p.searchDiameter = obj.searchDiameter;
+            p.numSpots = obj.numSpots;
+            p.spotTotalTime = obj.spotTotalTime;
+            p.spotOnTime = obj.spotOnTime;
+            
+            p.valueMin = obj.valueMin;
+            p.valueMax = obj.valueMax;
+            p.numValues = obj.numValues;
+            p.numValueRepeats = obj.numValueRepeats;
+            
+            p.runTimeSeconds = obj.runTimeSeconds;
+            
+            mode = 'autoReceptiveField';
+            runConfig = generateShapeStimulus(mode, p, obj.shapeResponseFigure.analysisData);
+            
+            obj.autoStimTime = runConfig.stimTime;
+            
             epoch.addParameter('sessionId',obj.sessionId);
             epoch.addParameter('presentationId',obj.epochNum);
-            epoch.addParameter('epochMode',epochMode);
-            epoch.addParameter('shapeDataMatrix', obj.shapeDataMatrix(:));
-            epoch.addParameter('shapeDataColumns', strjoin(obj.shapeDataColumns,','));
+            epoch.addParameter('epochMode',runConfig.epochMode);
+            epoch.addParameter('shapeDataMatrix', runConfig.shapeDataMatrix(:));
+            epoch.addParameter('shapeDataColumns', strjoin(runConfig.shapeDataColumns,',')); 
         end
         
         function preparePresentation(obj, presentation)
@@ -190,12 +131,7 @@ classdef AutoCenter < StageProtocol
             obj.setBackground(presentation);
             
             circ = Ellipse();
-            circ.color = obj.intensity;
-            circ.radiusX = round(obj.spotDiameter/2/obj.rigConfig.micronsPerPixel);
-            circ.radiusY = circ.radiusX;
-            circ.position = [0,0];
             presentation.addStimulus(circ);
-            
             
             % GENERIC controller
             function c = shapeController(state, preTime, baseLevel, startTime, endTime, shapeData_someColumns, controllerIndex)
@@ -257,13 +193,14 @@ classdef AutoCenter < StageProtocol
         function stimTime = get.stimTime(obj)
             % add a bit to the end to make sure we get all the spots
           
-            if obj.temporalAlignment > 0 & isempty(obj.epochNum)
-                stimTime = round(1000 * (obj.temporalAlignment * 2.0 + 1.0));
-            elseif obj.temporalAlignment > 0 & obj.epochNum <= 1
-                stimTime = round(1000 * (obj.temporalAlignment * 2.0 + 1.0));
-            else
-                stimTime = round(1000 * (obj.spotTotalTime * obj.numSpots * obj.numValues * obj.numValueRepeats + 1.0));
-            end
+            stimTime = obj.autoStimTime;
+%             if obj.temporalAlignment > 0 & isempty(obj.epochNum)
+%                 stimTime = round(1000 * (obj.temporalAlignment * 2.0 + 1.0));
+%             elseif obj.temporalAlignment > 0 & obj.epochNum <= 1
+%                 stimTime = round(1000 * (obj.temporalAlignment * 2.0 + 1.0));
+%             else
+%                 stimTime = round(1000 * (obj.spotTotalTime * obj.numSpots * obj.numValues * obj.numValueRepeats + 1.0));
+%             end
         end
         
         function values = get.values(obj)
@@ -293,7 +230,7 @@ classdef AutoCenter < StageProtocol
             
             % Keep queuing until the requested number of averages have been queued.
             if keepQueuing
-                keepQueuing = obj.numEpochsQueued < obj.numPresentations;
+                keepQueuing = obj.autoContinueRun;
             end
         end
         
@@ -303,7 +240,7 @@ classdef AutoCenter < StageProtocol
             
             % Keep going until the requested number of averages have been completed.
             if keepGoing
-                keepGoing = obj.numEpochsCompleted < obj.numPresentations;
+                keepGoing = obj.autoContinueRun;
             end
         end
         
