@@ -24,6 +24,7 @@ classdef ShapeResponseFigureHandler < FigureHandler
         
         analysisData
         epochData
+        shapePlotMode
     end
     
     methods
@@ -35,6 +36,7 @@ classdef ShapeResponseFigureHandler < FigureHandler
             ip.addParamValue('EndTime', 0, @(x)isnumeric(x));
             ip.addParamValue('SpikeThreshold', 10, @(x)isnumeric(x));
             ip.addParamValue('SpikeDetectorMode', 'Stdev', @(x)ischar(x));
+            ip.addParamValue('shapePlotMode', 'spatial', @(x)ischar(x));
             
             
             % Allow deviceName to be an optional parameter.
@@ -57,6 +59,7 @@ classdef ShapeResponseFigureHandler < FigureHandler
             obj.spikeThreshold = ip.Results.SpikeThreshold;
             obj.spikeDetectorMode = ip.Results.SpikeDetectorMode;
             obj.Ntrials = 0;
+            obj.shapePlotMode = ip.Results.shapePlotMode;
            
             if ~isempty(obj.deviceName)
                 set(obj.figureHandle, 'Name', [obj.protocolPlugin.displayName ': ' obj.deviceName ' ' obj.figureType]);
@@ -107,7 +110,7 @@ classdef ShapeResponseFigureHandler < FigureHandler
             obj.analysisData = processShapeData(obj.epochData);
 %             disp(obj.epochData)
 %             disp(obj.outputData)
-            plotShapeData(obj.analysisData, 'spatial');
+            plotShapeData(obj.analysisData, obj.shapePlotMode);
         end
         
         
