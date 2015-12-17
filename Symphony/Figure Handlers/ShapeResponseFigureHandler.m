@@ -89,27 +89,26 @@ classdef ShapeResponseFigureHandler < FigureHandler
             end
             
             % detect spikes
-            if strcmp(obj.spikeDetectorMode, 'Simple threshold')
-                responseData = responseData - mean(responseData);
-                sp = getThresCross(responseData,obj.spikeThreshold,sign(obj.spikeThreshold));
-            else
-                spikeResults = SpikeDetector_simple(responseData,1./sampleRate, obj.spikeThreshold);
-                sp = spikeResults.sp;
-            end
-            
-%             sp = sort(round(rand(10,1) * 2.5 * 10000));
-            
+%             if strcmp(obj.spikeDetectorMode, 'Simple threshold')
+%                 responseData = responseData - mean(responseData);
+%                 sp = getThresCross(responseData,obj.spikeThreshold,sign(obj.spikeThreshold));
+%             else
+%                 spikeResults = SpikeDetector_simple(responseData,1./sampleRate, obj.spikeThreshold);
+%                 sp = spikeResults.sp;
+%             end
+
             sd = ShapeData(epoch, 'online');
-            sd.setSpikes(sp);
-            sd.setResponse(responseData);
+            sd.simulateSpikes();
+%             sd.setSpikes(sp);
+%             sd.setResponse(responseData);
 %             disp(obj.epochIndex)
             obj.epochData{obj.epochIndex, 1} = sd;
-            
-%             obj.epochData{obj.epochIndex}.spikes = sp; 
-            
+                        
             obj.analysisData = processShapeData(obj.epochData);
 %             disp(obj.epochData)
 %             disp(obj.outputData)
+            figure(11)
+            clf;
             plotShapeData(obj.analysisData, obj.shapePlotMode);
         end
         
@@ -125,7 +124,7 @@ classdef ShapeResponseFigureHandler < FigureHandler
         
         
         function resetPlots(obj)
-            obj.outputData = 0;
+            obj.analysisData = [];
             obj.epochData = {};
             obj.epochIndex = 0;
         end

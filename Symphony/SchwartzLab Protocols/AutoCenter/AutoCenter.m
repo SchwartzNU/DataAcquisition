@@ -20,6 +20,8 @@ classdef AutoCenter < StageProtocol
         spotOnTime = 0.1;
         
         runTimeSeconds = 60;
+        
+        ISOResponse = false;
                                      
         valueMin = 0;
         valueMax = 1.0;
@@ -40,6 +42,8 @@ classdef AutoCenter < StageProtocol
         sessionId
         epochNum
         autoContinueRun = 1;
+        autoStimTime = 1000;
+        startTime = 0;
     end
     
     properties (Dependent)
@@ -81,6 +85,8 @@ classdef AutoCenter < StageProtocol
             
             obj.sessionId = regexprep(num2str(fix(clock),'%1d'),' +',''); % this is how you get a datetime string in MATLAB
             obj.epochNum = 0;
+            obj.startTime = clock;
+            obj.autoContinueRun = 1;
             
             obj.shapeResponseFigure = obj.openFigure('Shape Response', obj.amp, 'StartTime', obj.stimStart, 'EndTime', obj.stimEnd,...
                 'SpikeDetectorMode', obj.spikeDetection, 'SpikeThreshold', obj.spikeThreshold, 'shapePlotMode','spatial');
@@ -111,11 +117,22 @@ classdef AutoCenter < StageProtocol
             p.valueMax = obj.valueMax;
             p.numValues = obj.numValues;
             p.numValueRepeats = obj.numValueRepeats;
+            p.epochNum = obj.epochNum;
             
-            p.runTimeSeconds = obj.runTimeSeconds;
+            timeElapsed = etime(clock, obj.startTime);
+            p.timeRemainingSeconds = obj.runTimeSeconds - timeElapsed;
+%             obj.runTimeSeconds;
             
             mode = 'autoReceptiveField';
+            if obj.ISOResponse
+                mode = 'isoResponse';
+            end
             runConfig = generateShapeStimulus(mode, p, obj.shapeResponseFigure.analysisData);
+            obj.shapeDataColumns = runConfig.shapeDataColumns;
+            obj.shapeDataMatrix = runConfig.shapeDataMatrix;
+            
+%             disp('prep continue run:')
+%             disp(runConfig.autoContinueRun)
             
             obj.autoStimTime = runConfig.stimTime;
             obj.autoContinueRun = runConfig.autoContinueRun;
@@ -229,6 +246,8 @@ classdef AutoCenter < StageProtocol
             % Check the base class method to make sure the user hasn't paused or stopped the protocol.
             keepQueuing = continueQueuing@StageProtocol(obj);
             
+%             disp(obj.autoContinueRun)
+            
             % Keep queuing until the requested number of averages have been queued.
             if keepQueuing
                 keepQueuing = obj.autoContinueRun;
@@ -238,6 +257,8 @@ classdef AutoCenter < StageProtocol
         function keepGoing = continueRun(obj)
             % Check the base class method to make sure the user hasn't paused or stopped the protocol.
             keepGoing = continueRun@StageProtocol(obj);
+            
+%             disp(obj.autoContinueRun)
             
             % Keep going until the requested number of averages have been completed.
             if keepGoing
