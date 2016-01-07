@@ -107,8 +107,8 @@ classdef ShapeResponseFigureHandler < FigureHandler
             obj.analysisData = processShapeData(obj.epochData);
 %             disp(obj.epochData)
 %             disp(obj.outputData)
-            figure(11)
-            clf;
+%             figure(11)
+%             clf;
             plotShapeData(obj.analysisData, obj.shapePlotMode);
         end
         
