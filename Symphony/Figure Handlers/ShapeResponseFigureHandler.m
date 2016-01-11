@@ -98,18 +98,36 @@ classdef ShapeResponseFigureHandler < FigureHandler
             end
 
             sd = ShapeData(epoch, 'online');
-%             sd.simulateSpikes();
-            sd.setSpikes(sp);
-            sd.setResponse(responseData);
-%             disp(obj.epochIndex)
+            global DEMO_MODE;
+            
+            if strcmp(sd.ampMode, 'Cell attached')
+                if DEMO_MODE
+                    sd.simulateSpikes();
+                else
+                    sd.setSpikes(sp);
+                end
+            else % whole cell
+                if DEMO_MODE
+                    sd.simulateSpikes();
+                else
+                    sd.setResponse(responseData);
+                    sd.processWholeCell();
+                end
+            end
+                
             obj.epochData{obj.epochIndex, 1} = sd;
                         
             obj.analysisData = processShapeData(obj.epochData);
 %             disp(obj.epochData)
 %             disp(obj.outputData)
 %             figure(11)
-%             clf;
-            plotShapeData(obj.analysisData, obj.shapePlotMode);
+            clf;
+            if strcmp(obj.shapePlotMode, 'spatial') && obj.epochIndex == 1
+                spm = 'temporalAlignment';
+            else
+                spm = obj.shapePlotMode;
+            end
+            plotShapeData(obj.analysisData, spm);
         end
         
         
