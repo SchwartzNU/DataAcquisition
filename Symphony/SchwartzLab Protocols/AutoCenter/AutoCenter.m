@@ -22,8 +22,9 @@ classdef AutoCenter < StageProtocol
         runTimeSeconds = 60;
         
         ISOResponse = false;
+        refineCenter = false;
         alternateVoltage = false;
-                                     
+        
         valueMin = 0;
         valueMax = 1.0;
         numValues = 1;
@@ -37,7 +38,7 @@ classdef AutoCenter < StageProtocol
     
     properties (Hidden)
         shapeResponseFigure
-%         positions
+        %         positions
         shapeDataMatrix
         shapeDataColumns
         sessionId
@@ -46,6 +47,7 @@ classdef AutoCenter < StageProtocol
         autoStimTime = 1000;
         startTime = 0;
         currentVoltageIndex
+        runConfig
     end
     
     properties (Dependent)
@@ -85,7 +87,7 @@ classdef AutoCenter < StageProtocol
             % Call the base method.
             
             
-            obj.sessionId = str2num(regexprep(num2str(fix(clock),'%1d'),' +','')); % this is how you get a datetime string number in MATLAB
+            obj.sessionId = str2double(regexprep(num2str(fix(clock),'%1d'),' +','')); % this is how you get a datetime string number in MATLAB
             obj.epochNum = 0;
             obj.startTime = clock;
             obj.autoContinueRun = 1;
@@ -97,12 +99,12 @@ classdef AutoCenter < StageProtocol
             obj.shapeResponseFigure = obj.openFigure('Shape Response', obj.amp, 'StartTime', obj.stimStart, 'EndTime', obj.stimEnd,...
                 'SpikeDetectorMode', obj.spikeDetection, 'SpikeThreshold', obj.spikeThreshold, 'shapePlotMode','spatial');
             
-%             obj.openFigure('PSTH', obj.amp, ...
-%                 'StartTime', obj.stimStart, 'EndTime', obj.stimEnd, ...
-%                 'SpikeDetectorMode', obj.spikeDetection, 'SpikeThreshold', obj.spikeThreshold);
+            %             obj.openFigure('PSTH', obj.amp, ...
+            %                 'StartTime', obj.stimStart, 'EndTime', obj.stimEnd, ...
+            %                 'SpikeDetectorMode', obj.spikeDetection, 'SpikeThreshold', obj.spikeThreshold);
             
             prepareRun@StageProtocol(obj);
-
+            
         end
         
         function prepareEpoch(obj, epoch)
@@ -114,16 +116,13 @@ classdef AutoCenter < StageProtocol
             
             % alternate ex/in for same spots and settings
             if obj.alternateVoltage
-                voltages = [-60; 20];
-                obj.ampHoldSignal = voltages(obj.currentVoltageIndex);
-                fprintf('amp voltage: %d', obj.ampHoldSignal);
-                
-                if obj.currentVoltageIndex == 2 % inhibitory epoch
-                    obj.currentVoltageIndex = 1; % Ex for next epoch
+                if obj.currentVoltageIndex == 1
+                    obj.ampHoldSignal = -60;
+                else  % inhibitory epoch, following Ex to mirror it
+                    obj.ampHoldSignal = 20;
                     generateNewStimulus = false;
-                elseif obj.epochNum ~= 1 % let the first epoch not repeat, be Excitatory
-                    obj.currentVoltageIndex = 2;
                 end
+                fprintf('amp voltage: %d\n', obj.ampHoldSignal);
             end
             
             if generateNewStimulus
@@ -133,34 +132,50 @@ classdef AutoCenter < StageProtocol
                 p.numSpots = obj.numSpots;
                 p.spotTotalTime = obj.spotTotalTime;
                 p.spotOnTime = obj.spotOnTime;
-
+                
                 p.valueMin = obj.valueMin;
                 p.valueMax = obj.valueMax;
                 p.numValues = obj.numValues;
                 p.numValueRepeats = obj.numValueRepeats;
                 p.epochNum = obj.epochNum;
-
+                p.refineCenter = obj.refineCenter;
+                
                 timeElapsed = etime(clock, obj.startTime);
                 p.timeRemainingSeconds = obj.runTimeSeconds - timeElapsed; %only update time remaining if new stim, so Inhibitory always runs
-    %             obj.runTimeSeconds;
-
+                %             obj.runTimeSeconds;
+                
                 mode = 'autoReceptiveField';
                 if obj.ISOResponse
                     mode = 'isoResponse';
                 end
-                runConfig = generateShapeStimulus(mode, p, obj.shapeResponseFigure.analysisData);
+                runConfig = generateShapeStimulus(mode, p, obj.shapeResponseFigure.analysisData); %#ok<*PROP>
+                obj.runConfig = runConfig;
                 obj.shapeDataColumns = runConfig.shapeDataColumns;
                 obj.shapeDataMatrix = runConfig.shapeDataMatrix;
                 obj.autoStimTime = runConfig.stimTime;
-                obj.autoContinueRun = runConfig.autoContinueRun;                
-                
+            end
+            
+            % always continue if we're alternating and this is an excitatory epoch
+            if obj.alternateVoltage && obj.currentVoltageIndex == 1
+                obj.autoContinueRun = true;
+            else
+                obj.autoContinueRun = obj.runConfig.autoContinueRun;
+            end
+                            
+            % set next epoch voltage
+            if obj.epochNum == 1
+                obj.currentVoltageIndex = 1; % do excitatory next epoch
+            else
+                nextIndices = [2;1];
+                obj.currentVoltageIndex = nextIndices(obj.currentVoltageIndex);
             end
             
             epoch.addParameter('sessionId',obj.sessionId);
             epoch.addParameter('presentationId',obj.epochNum);
-            epoch.addParameter('epochMode',runConfig.epochMode);
-            epoch.addParameter('shapeDataMatrix', runConfig.shapeDataMatrix(:));
-            epoch.addParameter('shapeDataColumns', strjoin(runConfig.shapeDataColumns,',')); 
+            epoch.addParameter('epochMode',obj.runConfig.epochMode);
+            epoch.addParameter('shapeDataMatrix', obj.runConfig.shapeDataMatrix(:));
+            epoch.addParameter('shapeDataColumns', strjoin(obj.runConfig.shapeDataColumns,','));
+           
         end
         
         function preparePresentation(obj, presentation)
@@ -185,42 +200,42 @@ classdef AutoCenter < StageProtocol
             
             col_startTime = not(cellfun('isempty', strfind(obj.shapeDataColumns, 'startTime')));
             col_endTime = not(cellfun('isempty', strfind(obj.shapeDataColumns, 'endTime')));
-%             TODO: change epoch property shapeData to shapeDataMatrix in
-%             analysis
+            %             TODO: change epoch property shapeData to shapeDataMatrix in
+            %             analysis
             
             % intensity
             col_intensity = not(cellfun('isempty', strfind(obj.shapeDataColumns, 'intensity')));
             controllerIntensity = PropertyController(circ, 'color', @(s)shapeController(s, obj.preTime, obj.meanLevel, ...
-                                                    obj.shapeDataMatrix(:,col_startTime), ...
-                                                    obj.shapeDataMatrix(:,col_endTime), ...
-                                                    obj.shapeDataMatrix(:,col_intensity), 1));
+                obj.shapeDataMatrix(:,col_startTime), ...
+                obj.shapeDataMatrix(:,col_endTime), ...
+                obj.shapeDataMatrix(:,col_intensity), 1));
             presentation.addController(controllerIntensity);
             
             % diameter X
             col_diameter = not(cellfun('isempty', strfind(obj.shapeDataColumns, 'diameter')));
             controllerDiameterX = PropertyController(circ, 'radiusX', @(s)shapeController(s, obj.preTime, 100, ...
-                                                    obj.shapeDataMatrix(:,col_startTime), ...
-                                                    obj.shapeDataMatrix(:,col_endTime), ...
-                                                    obj.shapeDataMatrix(:,col_diameter) / 2, 1));
+                obj.shapeDataMatrix(:,col_startTime), ...
+                obj.shapeDataMatrix(:,col_endTime), ...
+                obj.shapeDataMatrix(:,col_diameter) / 2, 1));
             presentation.addController(controllerDiameterX);
             
             % diameter Y
             controllerDiameterY = PropertyController(circ, 'radiusY', @(s)shapeController(s, obj.preTime, 100, ...
-                                                    obj.shapeDataMatrix(:,col_startTime), ...
-                                                    obj.shapeDataMatrix(:,col_endTime), ...
-                                                    obj.shapeDataMatrix(:,col_diameter) / 2, 1));
+                obj.shapeDataMatrix(:,col_startTime), ...
+                obj.shapeDataMatrix(:,col_endTime), ...
+                obj.shapeDataMatrix(:,col_diameter) / 2, 1));
             presentation.addController(controllerDiameterY);
             
             % position
             mpp = obj.rigConfig.micronsPerPixel;
             poscols = not(cellfun('isempty', strfind(obj.shapeDataColumns, 'X'))) | ...
-                      not(cellfun('isempty', strfind(obj.shapeDataColumns, 'Y')));
+                not(cellfun('isempty', strfind(obj.shapeDataColumns, 'Y')));
             positions = obj.shapeDataMatrix(:,poscols);
             positions_transformed = [positions(:,1)./mpp + obj.windowSize(1)/2, positions(:,2)./mpp + obj.windowSize(2)/2];
             controllerPosition = PropertyController(circ, 'position', @(s)shapeController(s, obj.preTime, [0, 0], ...
-                                                    obj.shapeDataMatrix(:,col_startTime), ...
-                                                    obj.shapeDataMatrix(:,col_endTime), ...
-                                                    positions_transformed, 1));
+                obj.shapeDataMatrix(:,col_startTime), ...
+                obj.shapeDataMatrix(:,col_endTime), ...
+                positions_transformed, 1));
             presentation.addController(controllerPosition);
             
             preparePresentation@StageProtocol(obj, presentation);
@@ -229,20 +244,20 @@ classdef AutoCenter < StageProtocol
         
         function stimTime = get.stimTime(obj)
             % add a bit to the end to make sure we get all the spots
-          
+            
             stimTime = obj.autoStimTime;
-%             if obj.temporalAlignment > 0 & isempty(obj.epochNum)
-%                 stimTime = round(1000 * (obj.temporalAlignment * 2.0 + 1.0));
-%             elseif obj.temporalAlignment > 0 & obj.epochNum <= 1
-%                 stimTime = round(1000 * (obj.temporalAlignment * 2.0 + 1.0));
-%             else
-%                 stimTime = round(1000 * (obj.spotTotalTime * obj.numSpots * obj.numValues * obj.numValueRepeats + 1.0));
-%             end
+            %             if obj.temporalAlignment > 0 & isempty(obj.epochNum)
+            %                 stimTime = round(1000 * (obj.temporalAlignment * 2.0 + 1.0));
+            %             elseif obj.temporalAlignment > 0 & obj.epochNum <= 1
+            %                 stimTime = round(1000 * (obj.temporalAlignment * 2.0 + 1.0));
+            %             else
+            %                 stimTime = round(1000 * (obj.spotTotalTime * obj.numSpots * obj.numValues * obj.numValueRepeats + 1.0));
+            %             end
         end
         
         function values = get.values(obj)
             values = linspace(obj.valueMin, obj.valueMax, obj.numValues);
-%             disp(mat2str(values))
+            %             disp(mat2str(values))
             values = mat2str(values, 2);
         end
         
@@ -265,7 +280,7 @@ classdef AutoCenter < StageProtocol
             % Check the base class method to make sure the user hasn't paused or stopped the protocol.
             keepQueuing = continueQueuing@StageProtocol(obj);
             
-%             disp(obj.autoContinueRun)
+            %             disp(obj.autoContinueRun)
             
             % Keep queuing until the requested number of averages have been queued.
             if keepQueuing
@@ -277,7 +292,7 @@ classdef AutoCenter < StageProtocol
             % Check the base class method to make sure the user hasn't paused or stopped the protocol.
             keepGoing = continueRun@StageProtocol(obj);
             
-%             disp(obj.autoContinueRun)
+            %             disp(obj.autoContinueRun)
             
             % Keep going until the requested number of averages have been completed.
             if keepGoing
