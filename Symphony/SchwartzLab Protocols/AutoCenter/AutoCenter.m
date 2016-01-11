@@ -22,6 +22,7 @@ classdef AutoCenter < StageProtocol
         runTimeSeconds = 60;
         
         ISOResponse = false;
+        alternateVoltage = false;
                                      
         valueMin = 0;
         valueMax = 1.0;
@@ -44,6 +45,7 @@ classdef AutoCenter < StageProtocol
         autoContinueRun = 1;
         autoStimTime = 1000;
         startTime = 0;
+        currentVoltageIndex
     end
     
     properties (Dependent)
@@ -83,10 +85,14 @@ classdef AutoCenter < StageProtocol
             % Call the base method.
             
             
-            obj.sessionId = regexprep(num2str(fix(clock),'%1d'),' +',''); % this is how you get a datetime string in MATLAB
+            obj.sessionId = str2num(regexprep(num2str(fix(clock),'%1d'),' +','')); % this is how you get a datetime string number in MATLAB
             obj.epochNum = 0;
             obj.startTime = clock;
             obj.autoContinueRun = 1;
+            
+            if obj.alternateVoltage
+                obj.currentVoltageIndex = 1;
+            end
             
             obj.shapeResponseFigure = obj.openFigure('Shape Response', obj.amp, 'StartTime', obj.stimStart, 'EndTime', obj.stimEnd,...
                 'SpikeDetectorMode', obj.spikeDetection, 'SpikeThreshold', obj.spikeThreshold, 'shapePlotMode','spatial');
@@ -104,38 +110,51 @@ classdef AutoCenter < StageProtocol
             obj.epochNum = obj.epochNum + 1;
             
             prepareEpoch@StageProtocol(obj, epoch);
+            generateNewStimulus = true;
             
-%             epoch.addParameter('positions', obj.positions(:));
-            p = struct();
-            p.spotDiameter = obj.spotDiameter; %um
-            p.searchDiameter = obj.searchDiameter;
-            p.numSpots = obj.numSpots;
-            p.spotTotalTime = obj.spotTotalTime;
-            p.spotOnTime = obj.spotOnTime;
-            
-            p.valueMin = obj.valueMin;
-            p.valueMax = obj.valueMax;
-            p.numValues = obj.numValues;
-            p.numValueRepeats = obj.numValueRepeats;
-            p.epochNum = obj.epochNum;
-            
-            timeElapsed = etime(clock, obj.startTime);
-            p.timeRemainingSeconds = obj.runTimeSeconds - timeElapsed;
-%             obj.runTimeSeconds;
-            
-            mode = 'autoReceptiveField';
-            if obj.ISOResponse
-                mode = 'isoResponse';
+            % alternate ex/in for same spots and settings
+            if obj.alternateVoltage
+                voltages = [-60; 20];
+                obj.ampHoldSignal = voltages(obj.currentVoltageIndex);
+                fprintf('amp voltage: %d', obj.ampHoldSignal);
+                
+                if obj.currentVoltageIndex == 2 % inhibitory epoch
+                    obj.currentVoltageIndex = 1; % Ex for next epoch
+                    generateNewStimulus = false;
+                elseif obj.epochNum ~= 1 % let the first epoch not repeat, be Excitatory
+                    obj.currentVoltageIndex = 2;
+                end
             end
-            runConfig = generateShapeStimulus(mode, p, obj.shapeResponseFigure.analysisData);
-            obj.shapeDataColumns = runConfig.shapeDataColumns;
-            obj.shapeDataMatrix = runConfig.shapeDataMatrix;
             
-%             disp('prep continue run:')
-%             disp(runConfig.autoContinueRun)
-            
-            obj.autoStimTime = runConfig.stimTime;
-            obj.autoContinueRun = runConfig.autoContinueRun;
+            if generateNewStimulus
+                p = struct();
+                p.spotDiameter = obj.spotDiameter; %um
+                p.searchDiameter = obj.searchDiameter;
+                p.numSpots = obj.numSpots;
+                p.spotTotalTime = obj.spotTotalTime;
+                p.spotOnTime = obj.spotOnTime;
+
+                p.valueMin = obj.valueMin;
+                p.valueMax = obj.valueMax;
+                p.numValues = obj.numValues;
+                p.numValueRepeats = obj.numValueRepeats;
+                p.epochNum = obj.epochNum;
+
+                timeElapsed = etime(clock, obj.startTime);
+                p.timeRemainingSeconds = obj.runTimeSeconds - timeElapsed; %only update time remaining if new stim, so Inhibitory always runs
+    %             obj.runTimeSeconds;
+
+                mode = 'autoReceptiveField';
+                if obj.ISOResponse
+                    mode = 'isoResponse';
+                end
+                runConfig = generateShapeStimulus(mode, p, obj.shapeResponseFigure.analysisData);
+                obj.shapeDataColumns = runConfig.shapeDataColumns;
+                obj.shapeDataMatrix = runConfig.shapeDataMatrix;
+                obj.autoStimTime = runConfig.stimTime;
+                obj.autoContinueRun = runConfig.autoContinueRun;                
+                
+            end
             
             epoch.addParameter('sessionId',obj.sessionId);
             epoch.addParameter('presentationId',obj.epochNum);
