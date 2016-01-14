@@ -24,10 +24,12 @@ classdef PSTHFigureHandler < FigureHandler
         plotRows = [];
         plotCols = [];
         storedSampleRate;
+        spikeTimes = {};
         
         %analysis params
         spikeThreshold
-        spikeDetectorMode         
+        spikeDetectorMode
+        storeSpikeTimes % boolean number
     end
     
     methods
@@ -42,6 +44,7 @@ classdef PSTHFigureHandler < FigureHandler
             ip.addParamValue('EndTime', 0, @(x)isnumeric(x));
             ip.addParamValue('SpikeThreshold', 10, @(x)isnumeric(x));
             ip.addParamValue('SpikeDetectorMode', 'Stdev', @(x)ischar(x));
+            ip.addParamValue('StoreSpikeTimes', 0, @(x)isnumeric(x));
             
             % Allow deviceName to be an optional parameter.
             % inputParser.addOptional does not fully work with string variables.
@@ -63,6 +66,7 @@ classdef PSTHFigureHandler < FigureHandler
             obj.stimEnd = ip.Results.EndTime;
             obj.spikeThreshold = ip.Results.SpikeThreshold;
             obj.spikeDetectorMode = ip.Results.SpikeDetectorMode;
+            obj.storeSpikeTimes = ip.Results.StoreSpikeTimes;
             
             if iscell(ip.Results.GroupByParams)
                 obj.meanParamNames = ip.Results.GroupByParams;
@@ -126,6 +130,9 @@ classdef PSTHFigureHandler < FigureHandler
                 end
             end
             
+%             sp = 10000 * 1.5* sort(rand(100,1));
+%             sp = .3 + 1 * 10000 * sort(rand(epoch.getParameter('curSpotSize'),1));
+            
             % Check if we have existing data for this class of epoch.
             %disp(epochParams)
             meanPlot = struct([]);
@@ -174,7 +181,7 @@ classdef PSTHFigureHandler < FigureHandler
                 if isempty(spCount)
                     spCount = zeros(1,length(bins));
                 end
-
+                
                 %convert to Hz
                 spCount = spCount / (obj.binWidth*1E-3);
                 units = 'Hz';
@@ -276,10 +283,11 @@ classdef PSTHFigureHandler < FigureHandler
             
             % actually plot the figures
             clf(obj.figureHandle)
+            ha = tight_subplot(length(obj.meanPlots),1);
             for k = 1:numel(obj.meanPlots)
                 plotIndex = plotOrder(k);
                 meanPlot = obj.meanPlots(plotIndex);
-                obj.splot(plotIndex) = subplot(length(obj.meanPlots),1,k,'replace','Parent',obj.figureHandle);
+                obj.splot(plotIndex) = ha(k);%= subplot(,k,'replace','Parent',obj.figureHandle);
                 
                 if k == 1
                     title(obj.splot(plotIndex), titleString);
@@ -299,6 +307,9 @@ classdef PSTHFigureHandler < FigureHandler
                 set(lstart,'Parent',obj.splot(plotIndex));
                 set(lend,'Parent',obj.splot(plotIndex));
                 ylabel(num2str(round(meanPlot.params.(sortParam))));
+                if k ~= numel(obj.meanPlots)
+                    set(gca, 'XTickLabel', '');
+                end
             end
             
             
@@ -325,6 +336,9 @@ classdef PSTHFigureHandler < FigureHandler
                 set(obj.splot(i),'ylim',[minVal, maxVal]);
             end
             
+            if obj.storeSpikeTimes
+                obj.spikeTimes{length(obj.spikeTimes)+1,1} = sp;
+            end
         end
         
         function saveFigureData(obj,fname)

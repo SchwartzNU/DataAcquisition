@@ -110,7 +110,7 @@ classdef ShapeResponseFigureHandler < FigureHandler
                 if DEMO_MODE
                     sd.simulateSpikes();
                 else
-                    sd.setResponse(responseData);
+                    sd.setResponse(responseData');
                     sd.processWholeCell();
                 end
             end
