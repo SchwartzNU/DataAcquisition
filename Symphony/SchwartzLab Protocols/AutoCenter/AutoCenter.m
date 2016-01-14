@@ -84,9 +84,7 @@ classdef AutoCenter < StageProtocol
         
         
         function prepareRun(obj)
-            % Call the base method.
-            
-            
+
             obj.sessionId = str2double(regexprep(num2str(fix(clock),'%1d'),' +','')); % this is how you get a datetime string number in MATLAB
             obj.epochNum = 0;
             obj.startTime = clock;
@@ -108,10 +106,7 @@ classdef AutoCenter < StageProtocol
         end
         
         function prepareEpoch(obj, epoch)
-            % Call the base method.
             obj.epochNum = obj.epochNum + 1;
-            
-            prepareEpoch@StageProtocol(obj, epoch);
             generateNewStimulus = true;
             
             % alternate ex/in for same spots and settings
@@ -123,6 +118,7 @@ classdef AutoCenter < StageProtocol
                     generateNewStimulus = false;
                 end
                 fprintf('amp voltage: %d\n', obj.ampHoldSignal);
+                obj.setDeviceBackground(obj.amp, obj.ampHoldSignal, 'mV'); % actually set it
             end
             
             if generateNewStimulus
@@ -175,7 +171,8 @@ classdef AutoCenter < StageProtocol
             epoch.addParameter('epochMode',obj.runConfig.epochMode);
             epoch.addParameter('shapeDataMatrix', obj.runConfig.shapeDataMatrix(:));
             epoch.addParameter('shapeDataColumns', strjoin(obj.runConfig.shapeDataColumns,','));
-           
+            
+            prepareEpoch@StageProtocol(obj, epoch);
         end
         
         function preparePresentation(obj, presentation)
@@ -244,15 +241,15 @@ classdef AutoCenter < StageProtocol
         
         function stimTime = get.stimTime(obj)
             % add a bit to the end to make sure we get all the spots
-            
+%             dbstack
             stimTime = obj.autoStimTime;
-            %             if obj.temporalAlignment > 0 & isempty(obj.epochNum)
-            %                 stimTime = round(1000 * (obj.temporalAlignment * 2.0 + 1.0));
-            %             elseif obj.temporalAlignment > 0 & obj.epochNum <= 1
-            %                 stimTime = round(1000 * (obj.temporalAlignment * 2.0 + 1.0));
-            %             else
-            %                 stimTime = round(1000 * (obj.spotTotalTime * obj.numSpots * obj.numValues * obj.numValueRepeats + 1.0));
-            %             end
+%             if isempty(obj.epochNum)
+%                 stimTime = round(1000 * (4.0 + 2.0));
+%             elseif obj.epochNum <= 1
+%                 stimTime = round(1000 * (6));
+%             else
+%                 stimTime = round(1000 * (obj.spotTotalTime * obj.numSpots * obj.numValues * obj.numValueRepeats + 1.0));
+%             end
         end
         
         function values = get.values(obj)
