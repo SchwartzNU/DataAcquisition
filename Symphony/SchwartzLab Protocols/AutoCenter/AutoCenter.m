@@ -117,8 +117,9 @@ classdef AutoCenter < StageProtocol
                     obj.ampHoldSignal = 20;
                     generateNewStimulus = false;
                 end
-                fprintf('amp voltage: %d\n', obj.ampHoldSignal);
+                fprintf('setting amp voltage: %d mV; waiting 3 sec for stability\n', obj.ampHoldSignal);
                 obj.setDeviceBackground(obj.amp, obj.ampHoldSignal, 'mV'); % actually set it
+                pause(3)
             end
             
             if generateNewStimulus
@@ -144,7 +145,7 @@ classdef AutoCenter < StageProtocol
                 if obj.ISOResponse
                     mode = 'isoResponse';
                 end
-                runConfig = generateShapeStimulus(mode, p, obj.shapeResponseFigure.analysisData); %#ok<*PROP>
+                runConfig = generateShapeStimulus(mode, p, obj.shapeResponseFigure.analysisData); %#ok<*PROPLC,*PROP>
                 obj.runConfig = runConfig;
                 obj.shapeDataColumns = runConfig.shapeDataColumns;
                 obj.shapeDataMatrix = runConfig.shapeDataMatrix;
