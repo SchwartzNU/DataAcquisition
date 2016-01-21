@@ -127,7 +127,14 @@ classdef DriftingTexture < StageProtocol
             dist = obj.speed * obj.stimTime / 1000 % um / sec
             res = 1100 + 2 * (dist / obj.rigConfig.micronsPerPixel) % pixels
             M = randn(res);
-            M = imgaussfilt(M, sigma);
+            %             M = imgaussfilt(M, sigma); % code for a more enlightened era
+            
+            winL = 200; %size of smoothing factor window
+            rng(1); %set random seed
+            win = fspecial('gaussian',winL,sigma);
+            win = win ./ sum(win(:));
+            M = imfilter(M,win,'replicate');
+            
             if obj.uniformDistribution
                 M = makeUniformDist(M);
             else
