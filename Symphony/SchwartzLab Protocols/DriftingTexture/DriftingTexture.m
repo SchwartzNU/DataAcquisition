@@ -11,21 +11,20 @@ classdef DriftingTexture < StageProtocol
         %times in ms
         preTime = 250; %will be rounded to account for frame rate
         tailTime = 250; %will be rounded to account for frame rate
-        stimTime = 4000; %will be rounded to account for frame rate    
+        stimTime = 1000; %will be rounded to account for frame rate    
         
         movementDelay = 200;
         
         %in microns, use rigConfig to set microns per pixel
-        textureWidth = 1500;
         textureScale = 100;
         speed = 1000; %um/s
         uniformDistribution = false;
-
+        numberOfCycles = uint16(2)
         Nangles = 12;
     end
 
     properties
-        numberOfAverages = uint16(5)
+        
         %interpulse interval in sec
         interpulseInterval = 0
         apertureDiameter = 0;
@@ -33,7 +32,9 @@ classdef DriftingTexture < StageProtocol
         
     properties (Hidden)
        curAngle
-       angles 
+       angles
+       imageMatrix
+       moveDistance
     end
     
     methods
@@ -57,6 +58,32 @@ classdef DriftingTexture < StageProtocol
             
             %set directions
             obj.angles = rem(0:round(360/obj.Nangles):359, 360);
+            
+            % generate texture
+            disp('making texture');
+            sigma = obj.textureScale / obj.rigConfig.micronsPerPixel; % pixels
+            dist = obj.speed * obj.stimTime / 1000; % um / sec
+            obj.moveDistance = dist;
+            res = [max(obj.windowSize) * 1.6, max(obj.windowSize) * 1.6 + 1.2 * (dist / obj.rigConfig.micronsPerPixel)] % pixels
+            res = round(res);
+            M = randn(res);
+            %             M = imgaussfilt(M, sigma); % code for a more enlightened era
+            
+            winL = 200; %size of smoothing factor window
+            rng(1); %set random seed
+            win = fspecial('gaussian',winL,sigma);
+            win = win ./ sum(win(:));
+            M = imfilter(M,win,'replicate');
+            
+            if obj.uniformDistribution
+                M = makeUniformDist(M);
+            else
+                M = zscore(M) * 0.5 + 0.5;
+                M(M < 0) = 0;
+                M(M > 1) = 1;
+            end
+            obj.imageMatrix = uint8(255 * M);
+            disp('done');
             
             if ~DEMO_MODE %don't open response figures in demo moe
                 % Open figures showing the mean response of the amp.
@@ -123,39 +150,16 @@ classdef DriftingTexture < StageProtocol
             %set bg
             obj.setBackground(presentation);
             
-            sigma = obj.textureScale / obj.rigConfig.micronsPerPixel % pixels
-            dist = obj.speed * obj.stimTime / 1000 % um / sec
-            res = 1100 + 2 * (dist / obj.rigConfig.micronsPerPixel) % pixels
-            M = randn(res);
-            %             M = imgaussfilt(M, sigma); % code for a more enlightened era
             
-            winL = 200; %size of smoothing factor window
-            rng(1); %set random seed
-            win = fspecial('gaussian',winL,sigma);
-            win = win ./ sum(win(:));
-            M = imfilter(M,win,'replicate');
-            
-            if obj.uniformDistribution
-                M = makeUniformDist(M);
-            else
-                M = zscore(M) * 0.5 + 0.5;
-                M(M < 0) = 0;
-                M(M > 1) = 1;
-            end
-            M = uint8(255 * M);
-            im = Image(M);
-            im.position = [obj.windowSize(1)/2, obj.windowSize(2)/2];
-            im.size = [res, res];
+            im = Image(obj.imageMatrix);
+            im.orientation = obj.curAngle + 90;
+%             im.position = [obj.windowSize(1)/2, obj.windowSize(2)/2];
+            im.size = size(obj.imageMatrix);
             presentation.addStimulus(im);
             
 %             pixelSpeed = obj.gratingSpeed./obj.rigConfig.micronsPerPixel;
             
-            % circular aperture mask (only gratings in center)
-            if obj.apertureDiameter > 0
-                apertureDiameterRel = obj.apertureDiameter / max(obj.gratingLength, obj.gratingWidth);
-                mask = Mask.createCircularEnvelope(2048, apertureDiameterRel);
-                im.setMask(mask);
-            end
+
 
             % Gratings drift controller
             function pos = movementController(state, duration, preTime, movementDelay, tailTime, angle)
@@ -175,19 +179,17 @@ classdef DriftingTexture < StageProtocol
                     pos = [x,y] + [obj.windowSize(1)/2, obj.windowSize(2)/2];
                 end
             end
-            controller = PropertyController(im, 'position', @(s)movementController(s, presentation.duration, obj.preTime, obj.movementDelay, obj.tailTime));            
+            controller = PropertyController(im, 'position', @(s)movementController(s, presentation.duration, obj.preTime, obj.movementDelay, obj.tailTime, obj.curAngle));            
             presentation.addController(controller);
             
+           
+            % circular aperture mask (only gratings in center)
+            if obj.apertureDiameter > 0
+                apertureDiameterRel = obj.apertureDiameter / max(obj.gratingLength, obj.gratingWidth);
+                mask = Mask.createCircularEnvelope(2048, apertureDiameterRel);
+                im.setMask(mask);
+            end
             
-            % circular block mask (only gratings outside center)
-%             function opacity = onDuringStim(state, preTime, stimTime)
-%                 if state.time>preTime*1e-3 && state.time<=(preTime+stimTime)*1e-3
-%                     opacity = 1;
-%                 else
-%                     opacity = 0;
-%                 end
-%             end
-
             if obj.apertureDiameter < 0
                 spot = Ellipse();
                 spot.radiusX = round(obj.apertureDiameter / 2 / obj.rigConfig.micronsPerPixel); %convert to pixels
@@ -217,9 +219,8 @@ classdef DriftingTexture < StageProtocol
             % Check the base class method to make sure the user hasn't paused or stopped the protocol.
             keepQueuing = continueQueuing@StageProtocol(obj);
             
-            % Keep queuing until the requested number of averages have been queued.
             if keepQueuing
-                keepQueuing = obj.numEpochsQueued < obj.numberOfAverages;
+                keepQueuing = obj.numEpochsQueued < obj.numberOfCycles * obj.Nangles;
             end
         end
                 
@@ -227,9 +228,8 @@ classdef DriftingTexture < StageProtocol
             % Check the base class method to make sure the user hasn't paused or stopped the protocol.
             keepGoing = continueRun@StageProtocol(obj);
             
-            % Keep going until the requested number of averages have been completed.
             if keepGoing
-                keepGoing = obj.numEpochsCompleted < obj.numberOfAverages;
+                keepGoing = obj.numEpochsCompleted < obj.numberOfCycles * obj.Nangles;
             end
         end
         
