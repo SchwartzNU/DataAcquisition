@@ -56,7 +56,7 @@ classdef DriftingTexture < StageProtocol
             prepareRun@StageProtocol(obj);
             
             %set directions
-            obj.angles = rem(obj.startAngle:round(360/obj.Nangles):obj.startAngle+359, 360);
+            obj.angles = rem(0:round(360/obj.Nangles):359, 360);
             
             if ~DEMO_MODE %don't open response figures in demo moe
                 % Open figures showing the mean response of the amp.
@@ -232,17 +232,6 @@ classdef DriftingTexture < StageProtocol
                 keepGoing = obj.numEpochsCompleted < obj.numberOfAverages;
             end
         end
-        
-        function spatialFreq = get.spatialFreq(obj)
-            % 1 deg visual angle = 30um (mouse retina)
-            micronperdeg = 30;
-            spatialFreq = micronperdeg/(2*obj.cycleHalfWidth);
-        end
-        
-        function temporalFreq = get.temporalFreq(obj)
-            temporalFreq = obj.gratingSpeed/(2*obj.cycleHalfWidth);
-        end
-            
         
         function pn = parameterNames(obj, includeConstant)
             if nargin == 1
