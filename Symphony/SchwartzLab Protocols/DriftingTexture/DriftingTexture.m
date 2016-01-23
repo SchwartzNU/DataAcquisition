@@ -19,7 +19,7 @@ classdef DriftingTexture < StageProtocol
         textureScale = 100;
         speed = 1000; %um/s
         uniformDistribution = false;
-        numberOfCycles = uint16(2)
+        numberOfCycles = 2;
         Nangles = 12;
     end
 
@@ -60,28 +60,36 @@ classdef DriftingTexture < StageProtocol
             obj.angles = rem(0:round(360/obj.Nangles):359, 360);
             
             % generate texture
-            disp('making texture');
             sigma = obj.textureScale / obj.rigConfig.micronsPerPixel; % pixels
             dist = obj.speed * obj.stimTime / 1000; % um / sec
             obj.moveDistance = dist;
-            res = [max(obj.windowSize) * 1.6, max(obj.windowSize) * 1.6 + 1.2 * (dist / obj.rigConfig.micronsPerPixel)] % pixels
+            res = [max(obj.windowSize) * 1.42 + (dist / obj.rigConfig.micronsPerPixel),...
+                   max(obj.windowSize) * 1.42, ]; % pixels
             res = round(res);
+            
+            fprintf('making texture (%d x %d)\n', res(1), res(2));
+
             M = randn(res);
             %             M = imgaussfilt(M, sigma); % code for a more enlightened era
             
-            winL = 200; %size of smoothing factor window
+            winL = max(2*sigma, round(min(res) / 5)); %size of smoothing factor window
             rng(1); %set random seed
-            win = fspecial('gaussian',winL,sigma);
-            win = win ./ sum(win(:));
-            M = imfilter(M,win,'replicate');
-            
+            filtWin = fspecial('gaussian',winL,sigma);
+            filtWin = filtWin ./ sum(filtWin(:));
+            M = imfilter(M,filtWin,'replicate');
+%             
+%             M = abs(M) ./ max(M(:)) * 2 + 0.5;
+%             
             if obj.uniformDistribution
                 M = makeUniformDist(M);
             else
-                M = zscore(M) * 0.5 + 0.5;
+                M = zscore(M(:)) * 0.5 + 0.5;
+                M = reshape(M, res);
                 M(M < 0) = 0;
                 M(M > 1) = 1;
             end
+%             M = checkerboard_bi(10);
+%             M = horzcat(M,M);
             obj.imageMatrix = uint8(255 * M);
             disp('done');
             
@@ -153,33 +161,37 @@ classdef DriftingTexture < StageProtocol
             
             im = Image(obj.imageMatrix);
             im.orientation = obj.curAngle + 90;
-%             im.position = [obj.windowSize(1)/2, obj.windowSize(2)/2];
-            im.size = size(obj.imageMatrix);
+%             im.size = [1,2] * 100;
+            im.size = fliplr(size(obj.imageMatrix));
             presentation.addStimulus(im);
             
-%             pixelSpeed = obj.gratingSpeed./obj.rigConfig.micronsPerPixel;
-            
-
+            pixelSpeed = obj.speed / obj.rigConfig.micronsPerPixel;
 
             % Gratings drift controller
-            function pos = movementController(state, duration, preTime, movementDelay, tailTime, angle)
-                startMovementTime = (preTime/1E3 + movementDelay/1E3);
-                if state.time<=preTime/1E3 || state.time>duration-tailTime/1E3 %in pre or tail time
-                    %off screen
+            function pos = movementController(state, stimTime, preTime, movementDelay, pixelSpeed, angle)
+                t = state.time;
+                duration = stimTime / 1000;
+                shapeOnTime = preTime / 1000;
+                startMovementTime = shapeOnTime + movementDelay/1000;
+                endMovementTime = startMovementTime + stimTime/1000;
+                
+                if t < shapeOnTime
                     pos = [NaN, NaN];
-                else
-                    %on screen
-                    pos = [obj.windowSize(1)/2, obj.windowSize(2)/2]; 
-                end
-                if state.time > startMovementTime
-                    %then change phase
-                    t = state.time - startMovementTime;
-                    y = obj.speed * sind(angle) * t;
-                    x = obj.speed * cosd(angle) * t;
+                elseif t < startMovementTime
+                    y = pixelSpeed * sind(angle) * (0 - duration/2);
+                    x = pixelSpeed * cosd(angle) * (0 - duration/2);
                     pos = [x,y] + [obj.windowSize(1)/2, obj.windowSize(2)/2];
+%                 else
+                elseif t < endMovementTime
+                    timeFromStartMovement = t - startMovementTime;
+                    y = pixelSpeed * sind(angle) * (timeFromStartMovement - duration/2);
+                    x = pixelSpeed * cosd(angle) * (timeFromStartMovement - duration/2);
+                    pos = [x,y] + [obj.windowSize(1)/2, obj.windowSize(2)/2];
+                else
+                    pos = [NaN, NaN];
                 end
             end
-            controller = PropertyController(im, 'position', @(s)movementController(s, presentation.duration, obj.preTime, obj.movementDelay, obj.tailTime, obj.curAngle));            
+            controller = PropertyController(im, 'position', @(s)movementController(s, obj.stimTime, obj.preTime, obj.movementDelay, pixelSpeed, obj.curAngle));            
             presentation.addController(controller);
             
            
