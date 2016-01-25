@@ -21,6 +21,7 @@ classdef DriftingTexture < StageProtocol
         uniformDistribution = false;
         numberOfCycles = 2;
         Nangles = 12;
+        randomSeed = 1;
     end
 
     properties
@@ -45,8 +46,17 @@ classdef DriftingTexture < StageProtocol
             
             % Return properties for the specified parameter (see ParameterProperty class).
             switch parameterName
-                case 'interpulseInterval'
-                    p.units = 's';
+                case 'speed'
+                    p.displayTab = 'mostUsed';
+                    p.units = 'um/s';
+                case {'textureScale'}
+                    p.units = 'um';
+                    p.displayTab = 'mostUsed';
+                case 'stimTime'
+                    p.units = 'ms';
+                    p.displayTab = 'mostUsed';
+                case {'Nangles', 'numberOfCycles'}
+                    p.displayTab = 'mostUsed';
             end
         end
         
@@ -69,7 +79,8 @@ classdef DriftingTexture < StageProtocol
             
             fprintf('making texture (%d x %d)\n', res(1), res(2));
 
-            M = randn(res);
+            stream = RandStream('mt19937ar','Seed',obj.randomSeed);
+            M = randn(stream, res);
             %             M = imgaussfilt(M, sigma); % code for a more enlightened era
             
             winL = max(2*sigma, round(min(res) / 5)); %size of smoothing factor window
@@ -170,7 +181,7 @@ classdef DriftingTexture < StageProtocol
             
             pixelSpeed = obj.speed / obj.rigConfig.micronsPerPixel;
 
-            % Gratings drift controller
+            % drift controller
             function pos = movementController(state, stimTime, preTime, movementDelay, pixelSpeed, angle)
                 t = state.time;
                 duration = stimTime / 1000;
@@ -200,11 +211,22 @@ classdef DriftingTexture < StageProtocol
            
             % circular aperture mask (only gratings in center)
             if obj.apertureDiameter > 0
-                apertureDiameterRel = obj.apertureDiameter / max(obj.gratingLength, obj.gratingWidth);
-                mask = Mask.createCircularEnvelope(2048, apertureDiameterRel);
-                im.setMask(mask);
+                % this is a gray square over the center of the display,
+                % with a circle open in the middle
+                maskRes = max(obj.windowSize);
+                apertureDiameterRel = obj.apertureDiameter / obj.rigConfig.micronsPerPixel / maskRes;
+                mask = Mask.createCircularEnvelope(max(im.size), apertureDiameterRel);
+                mask.invert();
+                
+                aperture = Rectangle();
+                aperture.color = obj.meanLevel;
+                aperture.size = maskRes * ones(2,1);
+                aperture.position = [obj.windowSize(1)/2, obj.windowSize(2)/2];
+                aperture.setMask(mask);
+                presentation.addStimulus(aperture);
             end
             
+            % circular mask (gratings outside a meanLevel center)
             if obj.apertureDiameter < 0
                 spot = Ellipse();
                 spot.radiusX = round(obj.apertureDiameter / 2 / obj.rigConfig.micronsPerPixel); %convert to pixels
