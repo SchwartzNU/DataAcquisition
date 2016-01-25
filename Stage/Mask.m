@@ -38,26 +38,29 @@ classdef Mask < handle
     methods (Static)
         
         % Creates a circular envelope mask.
-        function mask = createCircularEnvelope(resolution)
+        function mask = createCircularEnvelope(resolution, diameter)
             if nargin < 1
                 resolution = 512;
+            end
+            if nargin < 2
+                diameter = 1;
             end
             
             distanceMatrix = createDistanceMatrix(resolution);
             
-            circle = uint8((distanceMatrix <= 1) * 255);
+            circle = uint8((distanceMatrix <= diameter) * 255);
             mask = Mask(circle);
         end
         
         % Creates a gaussian envelope mask.
-        function mask = createGaussianEnvelope(resolution)
+        function mask = createGaussianEnvelope(resolution, sigma)
             if nargin < 1
                 resolution = 512;
+                sigma = 1/3;
             end
             
             distanceMatrix = createDistanceMatrix(resolution);
-            
-            sigma = 1/3;
+           
             gaussian = uint8(exp(-distanceMatrix.^2 / (2 * sigma^2)) * 255);
             mask = Mask(gaussian);
         end
