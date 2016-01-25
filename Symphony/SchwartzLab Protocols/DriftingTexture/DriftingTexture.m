@@ -60,7 +60,7 @@ classdef DriftingTexture < StageProtocol
             obj.angles = rem(0:round(360/obj.Nangles):359, 360);
             
             % generate texture
-            sigma = obj.textureScale / obj.rigConfig.micronsPerPixel; % pixels
+            sigma = 0.5 * obj.textureScale / obj.rigConfig.micronsPerPixel; % pixels
             dist = obj.speed * obj.stimTime / 1000; % um / sec
             obj.moveDistance = dist;
             res = [max(obj.windowSize) * 1.42 + (dist / obj.rigConfig.micronsPerPixel),...
@@ -151,6 +151,9 @@ classdef DriftingTexture < StageProtocol
             angleInd = mod(obj.numEpochsQueued, obj.Nangles) + 1;
             
             obj.curAngle = obj.angles(angleInd); %make it a property so preparePresentation has access to it
+            
+%             disp(obj.curAngle)
+           
             epoch.addParameter('textureAngle', obj.curAngle);
         end
         
