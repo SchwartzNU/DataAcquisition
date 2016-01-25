@@ -33,9 +33,13 @@ classdef Mask < handle
             obj.texture.generateMipmap();
         end
         
+        function invert(obj)
+            obj.matrix = uint8((obj.matrix == 0) * 255);
+        end
     end
     
     methods (Static)
+       
         
         % Creates a circular envelope mask.
         function mask = createCircularEnvelope(resolution, diameter)
@@ -96,5 +100,5 @@ end
 function m = createDistanceMatrix(size)
     step = 2 / (size - 1);
     [xx, yy] = meshgrid(-1:step:1, -1:step:1);
-    m = sqrt(2*xx.^2 + yy.^2); %GWS: 2 is for lightCrafter diamond display
+    m = sqrt(xx.^2 + yy.^2); %GWS: 2 is for lightCrafter diamond display
 end
