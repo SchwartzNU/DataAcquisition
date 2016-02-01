@@ -2,7 +2,7 @@ classdef AlignmentCross < StageProtocol
     
     properties (Constant)
         identifier = 'edu.northwestern.SchwartzLab.AlignmentCross'
-        version = 1
+        version = 2 % make uneven so we can see display orientation
         displayName = 'Alignment Cross'
     end
     
@@ -45,23 +45,32 @@ classdef AlignmentCross < StageProtocol
         function preparePresentation(obj, presentation)
             preparePresentation@StageProtocol(obj, presentation);
             
-            rect1 = Rectangle();
-            rect1.size = [obj.width, obj.length];
-            rect1.color = obj.intensity;
-            rect1.position = [obj.windowSize(1)/2, obj.windowSize(2)/2];
-            presentation.addStimulus(rect1);
-                        
-            rect2 = Rectangle();
-            rect2.size = [obj.length, obj.width/2];
-            rect2.color = obj.intensity;
-            rect2.position = [obj.windowSize(1)/2 + obj.length/2, obj.windowSize(2)/2];
-            presentation.addStimulus(rect2);
+            armLength = obj.length / 2 / obj.rigConfig.micronsPerPixel;
+            armWidth = obj.width / obj.rigConfig.micronsPerPixel;
             
+            rect1 = Rectangle();
+            rect1.size = [armWidth * .6, armLength];
+            rect1.color = obj.intensity;
+            rect1.position = [obj.windowSize(1)/2, obj.windowSize(2)/2 + armLength / 2];
+            presentation.addStimulus(rect1);
+            
+            rect2 = Rectangle();
+            rect2.size = [armWidth, armLength];
+            rect2.color = obj.intensity;
+            rect2.position = [obj.windowSize(1)/2, obj.windowSize(2)/2 - armLength / 2];
+            presentation.addStimulus(rect2);
+                        
             rect3 = Rectangle();
-            rect3.size = [obj.length, obj.width];
+            rect3.size = [armLength, armWidth * 1.5];
             rect3.color = obj.intensity;
-            rect3.position = [obj.windowSize(1)/2 - obj.length/2, obj.windowSize(2)/2];
+            rect3.position = [obj.windowSize(1)/2 + armLength / 2, obj.windowSize(2)/2];
             presentation.addStimulus(rect3);
+            
+            rect4 = Rectangle();
+            rect4.size = [armLength, armWidth];
+            rect4.color = obj.intensity;
+            rect4.position = [obj.windowSize(1)/2 - armLength / 2, obj.windowSize(2)/2];
+            presentation.addStimulus(rect4);
             
         end
         
