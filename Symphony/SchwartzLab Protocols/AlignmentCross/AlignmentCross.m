@@ -48,14 +48,20 @@ classdef AlignmentCross < StageProtocol
             rect1 = Rectangle();
             rect1.size = [obj.width, obj.length];
             rect1.color = obj.intensity;
-            rect1.position = [obj.windowSize(1)/2, obj.windowSize(2)/2]; %this is centered - need to deal with this projection issu
+            rect1.position = [obj.windowSize(1)/2, obj.windowSize(2)/2];
             presentation.addStimulus(rect1);
                         
             rect2 = Rectangle();
-            rect2.size = [obj.length, obj.width];
+            rect2.size = [obj.length, obj.width/2];
             rect2.color = obj.intensity;
-            rect2.position = [obj.windowSize(1)/2, obj.windowSize(2)/2]; %this is centered - need to deal with this projection issu
+            rect2.position = [obj.windowSize(1)/2 + obj.length/2, obj.windowSize(2)/2];
             presentation.addStimulus(rect2);
+            
+            rect3 = Rectangle();
+            rect3.size = [obj.length, obj.width];
+            rect3.color = obj.intensity;
+            rect3.position = [obj.windowSize(1)/2 - obj.length/2, obj.windowSize(2)/2];
+            presentation.addStimulus(rect3);
             
         end
         
