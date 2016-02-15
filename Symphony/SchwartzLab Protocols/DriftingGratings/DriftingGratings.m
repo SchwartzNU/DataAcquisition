@@ -2,7 +2,7 @@ classdef DriftingGratings < StageProtocol
     
     properties (Constant)
         identifier = 'edu.northwestern.SchwartzLab.DriftingGratings'
-        version = 2
+        version = 3 % fixed angles to match moving bar
         displayName = 'Drifting Gratings'
     end
     
@@ -152,6 +152,7 @@ classdef DriftingGratings < StageProtocol
             
             obj.curAngle = obj.angles(angleInd); %make it a property so preparePresentation has access to it
             epoch.addParameter('gratingAngle', obj.curAngle);
+            epoch.addParameter('anglesLikeMovingBar',1);
         end
         
         function preparePresentation(obj, presentation)
@@ -186,7 +187,7 @@ classdef DriftingGratings < StageProtocol
                 end
                 if state.time > startMovementTime
                     %then change phase
-                    grat.phase = 360*obj.temporalFreq*(state.time - startMovementTime);
+                    grat.phase = -360*obj.temporalFreq*(state.time - startMovementTime); %fix to match moving bar
                 end
             end
             controller = PropertyController(grat, 'position', @(s)movementController(s, presentation.duration, obj.preTime, obj.movementDelay, obj.tailTime));            
