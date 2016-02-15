@@ -201,7 +201,7 @@ classdef BarsMultiSpeed < StageProtocol
             obj.patternRate
             obj.patternsPerFrame
             obj.RstarIntensity
-            pixelSpeed = obj.curSpeed./obj.rigConfig.micronsPerPixel
+            pixelSpeed = obj.curSpeed./obj.rigConfig.micronsPerPixel;
             %disp(obj.curAngle)
             Xstep = cos(obj.offsetAngle*pi/180);
             Ystep = sin(obj.offsetAngle*pi/180);
