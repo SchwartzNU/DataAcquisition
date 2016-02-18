@@ -18,17 +18,21 @@ classdef AutoCenter < StageProtocol
         numSpots = 30;
         spotTotalTime = 0.5;
         spotOnTime = 0.1;
+        exVoltage = -60; %mV
+        inVoltage = 20; %mV
         
         runTimeSeconds = 60;
         
         ISOResponse = false;
         refineCenter = false;
-        alternateVoltage = false;
+        refineVariance = false; % nothing for now
+        alternateVoltage = false; % WC only
+        interactiveMode = false;
         
-        valueMin = 0;
+        valueMin = 0.1;
         valueMax = 1.0;
         numValues = 1;
-        numValueRepeats = 1;
+        numValueRepeats = 2;
     end
     
     properties
@@ -38,6 +42,7 @@ classdef AutoCenter < StageProtocol
     
     properties (Hidden)
         shapeResponseFigure
+        shapeResponseFigureWC
         %         positions
         shapeDataMatrix
         shapeDataColumns
@@ -90,6 +95,9 @@ classdef AutoCenter < StageProtocol
             obj.startTime = clock;
             obj.autoContinueRun = 1;
             
+            if strcmp(obj.ampMode, 'Cell attached')
+                obj.alternateVoltage = false;
+            end
             if obj.alternateVoltage
                 obj.currentVoltageIndex = 1;
             end
@@ -97,6 +105,16 @@ classdef AutoCenter < StageProtocol
             obj.shapeResponseFigure = obj.openFigure('Shape Response', obj.amp, 'StartTime', obj.stimStart, 'EndTime', obj.stimEnd,...
                 'SpikeDetectorMode', obj.spikeDetection, 'SpikeThreshold', obj.spikeThreshold, 'shapePlotMode','spatial');
             
+            
+            if strcmp(obj.ampMode, 'Whole cell')
+                obj.shapeResponseFigureWC = obj.openFigure('Shape Response', obj.amp, 'StartTime', obj.stimStart, 'EndTime', obj.stimEnd,...
+                    'SpikeDetectorMode', obj.spikeDetection, 'SpikeThreshold', obj.spikeThreshold, 'shapePlotMode','wholeCell');
+            end
+            
+            if obj.numValues > 1        
+                obj.shapeResponseFigureSubunit = obj.openFigure('Shape Response', obj.amp, 'StartTime', obj.stimStart, 'EndTime', obj.stimEnd,...
+                    'SpikeDetectorMode', obj.spikeDetection, 'SpikeThreshold', obj.spikeThreshold, 'shapePlotMode','subunit');
+            end            
             %             obj.openFigure('PSTH', obj.amp, ...
             %                 'StartTime', obj.stimStart, 'EndTime', obj.stimEnd, ...
             %                 'SpikeDetectorMode', obj.spikeDetection, 'SpikeThreshold', obj.spikeThreshold);
@@ -112,9 +130,9 @@ classdef AutoCenter < StageProtocol
             % alternate ex/in for same spots and settings
             if obj.alternateVoltage
                 if obj.currentVoltageIndex == 1
-                    obj.ampHoldSignal = -60;
+                    obj.ampHoldSignal = obj.exVoltage;
                 else  % inhibitory epoch, following Ex to mirror it
-                    obj.ampHoldSignal = 20;
+                    obj.ampHoldSignal = obj.inVoltage;
                     generateNewStimulus = false;
                 end
                 fprintf('setting amp voltage: %d mV; waiting 3 sec for stability\n', obj.ampHoldSignal);
@@ -124,6 +142,7 @@ classdef AutoCenter < StageProtocol
             
             if generateNewStimulus
                 p = struct();
+                p.generatePositions = true;
                 p.spotDiameter = obj.spotDiameter; %um
                 p.searchDiameter = obj.searchDiameter;
                 p.numSpots = obj.numSpots;
@@ -145,6 +164,32 @@ classdef AutoCenter < StageProtocol
                 if obj.ISOResponse
                     mode = 'isoResponse';
                 end
+                
+                
+                % overwrite this info with custom if interactive
+                if obj.interactiveMode
+                    imode = input('stimulus mode? ','s');
+                    if strcmp(imode, 'curves') % response curves
+                        mode = 'receptiveField';
+                        p.numSpots = input('num positions? ');
+                        p.generatePositions = false;
+                        p.numValues = input('num values? ');
+                        p.numValueRepeats = input('num value repeats? ');
+                        
+                    elseif strcmp(imode, 'map')
+                        mode = 'receptiveField';
+                        p.generatePositions = input('generate new positions? ');
+                    
+                    elseif strcmp(imode, 'align')
+                        mode = 'temporalAlignment';
+                    
+                    elseif strcmp(imode, 'rv')
+                        mode = 'refineVariance';
+                        p.variancePercentile = input('percentile of highest variance to refine (0-100)? ');
+                        p.numValueRepeats = input('num value repeats to add? ');
+                    end
+                end
+                
                 runConfig = generateShapeStimulus(mode, p, obj.shapeResponseFigure.analysisData); %#ok<*PROPLC,*PROP>
                 obj.runConfig = runConfig;
                 obj.shapeDataColumns = runConfig.shapeDataColumns;
