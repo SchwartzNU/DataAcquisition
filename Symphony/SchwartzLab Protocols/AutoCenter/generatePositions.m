@@ -77,6 +77,42 @@ elseif strcmp(mode, 'random')
         end
         positions(si,:) = pos;
     end
-end
+elseif strcmp(mode, 'triangular')
+    searchRadius = settings(1);
+    spotSpacing = settings(2);
+
+    minSideLen = sqrt(3) * searchRadius * 2;
+    n = ceil(minSideLen / spotSpacing);
+    sidelen = n * spotSpacing;
+
+    center = [0 0];
+
+    tcorner = [-sidelen / 2, 0;
+               0, sidelen * sqrt(3)/2;
+               sidelen / 2, 0];
+    tcorner = bsxfun(@plus, tcorner, -1*[0, sidelen * sqrt(3)/6]);
+    tcorner = bsxfun(@plus, tcorner, center);
+
+    positions = [];
+    point_index = 0;
+
+    for i = 0 : n
+        for j = 0 : n - i
+            k = n - i - j;
+            pos = ( i * tcorner(1,:) + j * tcorner(2,:) + k * tcorner(3,:) ) / n;
+            distFromCenter = sqrt(sum((pos - center).^2));
+            if distFromCenter <= searchRadius
+                point_index = point_index + 1;
+                positions(point_index, 1:2) = pos;
+            end
+        end
+    end
     
+    % add spacing to avoid adjacent successive spots 
+    order = (1:2:length(positions))';
+    order = vertcat(order, order + 1);
+    order = order(1:length(positions));
+    positions = positions(order, :);    
+    
+end
     
