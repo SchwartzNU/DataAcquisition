@@ -22,8 +22,9 @@ classdef ShapeResponseFigureHandler < FigureHandler
         Ntrials
         baselineRate
         
-        outputData
+        analysisData
         epochData
+        shapePlotMode
     end
     
     methods
@@ -35,6 +36,7 @@ classdef ShapeResponseFigureHandler < FigureHandler
             ip.addParamValue('EndTime', 0, @(x)isnumeric(x));
             ip.addParamValue('SpikeThreshold', 10, @(x)isnumeric(x));
             ip.addParamValue('SpikeDetectorMode', 'Stdev', @(x)ischar(x));
+            ip.addParamValue('shapePlotMode', 'spatial', @(x)ischar(x));
             
             
             % Allow deviceName to be an optional parameter.
@@ -57,6 +59,7 @@ classdef ShapeResponseFigureHandler < FigureHandler
             obj.spikeThreshold = ip.Results.SpikeThreshold;
             obj.spikeDetectorMode = ip.Results.SpikeDetectorMode;
             obj.Ntrials = 0;
+            obj.shapePlotMode = ip.Results.shapePlotMode;
            
             if ~isempty(obj.deviceName)
                 set(obj.figureHandle, 'Name', [obj.protocolPlugin.displayName ': ' obj.deviceName ' ' obj.figureType]);
@@ -93,21 +96,38 @@ classdef ShapeResponseFigureHandler < FigureHandler
                 spikeResults = SpikeDetector_simple(responseData,1./sampleRate, obj.spikeThreshold);
                 sp = spikeResults.sp;
             end
-            
-%             sp = sort(round(rand(10,1) * 2.5 * 10000));
-            
+
             sd = ShapeData(epoch, 'online');
-            sd.setSpikes(sp);
-            sd.setResponse(responseData);
-%             disp(obj.epochIndex)
+            global DEMO_MODE;
+            
+            if strcmp(sd.ampMode, 'Cell attached')
+                if DEMO_MODE
+                    sd.simulateSpikes();
+                else
+                    sd.setSpikes(sp);
+                end
+            else % whole cell
+                if DEMO_MODE
+                    sd.simulateSpikes();
+                else
+                    sd.setResponse(responseData');
+                    sd.processWholeCell();
+                end
+            end
+                
             obj.epochData{obj.epochIndex, 1} = sd;
-            
-%             obj.epochData{obj.epochIndex}.spikes = sp; 
-            
-            obj.outputData = processShapeData(obj.epochData);
+                        
+            obj.analysisData = processShapeData(obj.epochData);
 %             disp(obj.epochData)
 %             disp(obj.outputData)
-            plotShapeData(obj.outputData,'spatial');
+%             figure(11)
+            clf;
+            if strcmp(obj.shapePlotMode, 'spatial') && obj.epochIndex == 1
+                spm = 'temporalAlignment';
+            else
+                spm = obj.shapePlotMode;
+            end
+            plotShapeData(obj.analysisData, spm);
         end
         
         
@@ -122,7 +142,7 @@ classdef ShapeResponseFigureHandler < FigureHandler
         
         
         function resetPlots(obj)
-            obj.outputData = 0;
+            obj.analysisData = [];
             obj.epochData = {};
             obj.epochIndex = 0;
         end
