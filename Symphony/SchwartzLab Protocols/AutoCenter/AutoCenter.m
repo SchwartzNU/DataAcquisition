@@ -13,19 +13,16 @@ classdef AutoCenter < StageProtocol
         tailTime = 250 %will be rounded to account for frame rate
         
         %in microns, use rigConfig to set microns per pixel
-        spotDiameter = 30; %um
-        searchDiameter = 250; %um
-        numSpots = 30;
-        spotTotalTime = 0.5;
+        spotDiameter = 22; %um
+        searchDiameter = 300; %um
+        numSpots = 100;
+        spotTotalTime = 0.3;
         spotOnTime = 0.1;
         exVoltage = -60; %mV
         inVoltage = 20; %mV
         
         runTimeSeconds = 60;
         
-        ISOResponse = false;
-        refineCenter = false;
-        refineVariance = false; % nothing for now
         alternateVoltage = false; % WC only
         interactiveMode = false;
         
@@ -86,8 +83,8 @@ classdef AutoCenter < StageProtocol
                     p.units = 'msec';
             end
         end
-        
-        
+
+
         function prepareRun(obj)
 
             obj.sessionId = str2double(regexprep(num2str(fix(clock),'%1d'),' +','')); % this is how you get a datetime string number in MATLAB
@@ -141,60 +138,107 @@ classdef AutoCenter < StageProtocol
             end
             
             if generateNewStimulus
-                p = struct();
-                p.generatePositions = true;
-                p.spotDiameter = obj.spotDiameter; %um
-                p.searchDiameter = obj.searchDiameter;
-                p.numSpots = obj.numSpots;
-                p.spotTotalTime = obj.spotTotalTime;
-                p.spotOnTime = obj.spotOnTime;
                 
-                p.valueMin = obj.valueMin;
-                p.valueMax = obj.valueMax;
-                p.numValues = obj.numValues;
-                p.numValueRepeats = obj.numValueRepeats;
-                p.epochNum = obj.epochNum;
-                p.refineCenter = obj.refineCenter;
+                analysisData = obj.shapeResponseFigure.analysisData;
                 
-                timeElapsed = etime(clock, obj.startTime);
-                p.timeRemainingSeconds = obj.runTimeSeconds - timeElapsed; %only update time remaining if new stim, so Inhibitory always runs
-                %             obj.runTimeSeconds;
-                
-                mode = 'autoReceptiveField';
-                if obj.ISOResponse
-                    mode = 'isoResponse';
-                end
-                
-                
-                % overwrite this info with custom if interactive
-                if obj.interactiveMode
-                    imode = input('stimulus mode? ','s');
-                    if strcmp(imode, 'curves') % response curves
-                        mode = 'receptiveField';
-                        p.numSpots = input('num positions? ');
-                        p.generatePositions = false;
-                        p.numValues = input('num values? ');
-                        p.numValueRepeats = input('num value repeats? ');
+                while true % loop preference setup until we make the choices we like
+                    p = struct();
+                    p.generatePositions = true;
+                    p.spotDiameter = obj.spotDiameter; %um
+                    p.searchDiameter = obj.searchDiameter;
+                    p.numSpots = obj.numSpots;
+                    p.spotTotalTime = obj.spotTotalTime;
+                    p.spotOnTime = obj.spotOnTime;
+
+                    p.valueMin = obj.valueMin;
+                    p.valueMax = obj.valueMax;
+                    p.numValues = obj.numValues;
+                    p.numValueRepeats = obj.numValueRepeats;
+                    p.epochNum = obj.epochNum;
+                    p.refineCenter = obj.refineCenter;
+
+                    timeElapsed = etime(clock, obj.startTime);
+                    p.timeRemainingSeconds = obj.runTimeSeconds - timeElapsed; %only update time remaining if new stim, so Inhibitory always runs
+                    %             obj.runTimeSeconds;
+
+                    mode = 'autoReceptiveField';
+                    if obj.ISOResponse
+                        mode = 'isoResponse';
+                    end
+
+                    % INTERACTIVE MODE
+                    % TODO: convert to GUI
+                    % overwrite above params with custom if interactive
+                    if obj.interactiveMode
                         
-                    elseif strcmp(imode, 'map')
-                        mode = 'receptiveField';
-                        p.generatePositions = input('generate new positions? ');
-                    
-                    elseif strcmp(imode, 'align')
-                        mode = 'temporalAlignment';
-                    
-                    elseif strcmp(imode, 'rv')
-                        mode = 'refineVariance';
-                        p.variancePercentile = input('percentile of highest variance to refine (0-100)? ');
-                        p.numValueRepeats = input('num value repeats to add? ');
+                        % choose active point set
+                        % TODO: analysisData.pointSets
+                        
+                        figure(40);
+                        plotShapeData(analysisData, 'plotSpatial_mean')
+%                         disp('chose center then any edge point');
+%                         [x,y] = ginput(2);
+                        
+                        
+                        % choose next measurement
+                        disp('map, curves, adapt, align, refvar');
+                        imode = input('measurement? ','s');
+                        
+                        if strcmp(imode, 'curves') % response curves
+                            mode = 'responseCurves';
+                            p.numSpots = input('num positions? ');
+                            p.generatePositions = false;
+                            p.numValues = input('num values? ');
+                            p.numValueRepeats = input('num value repeats? ');
+
+                        elseif strcmp(imode, 'map')
+                            mode = 'receptiveField';
+                            p.generatePositions = input('generate new positions? ');
+                            if p.generatePositions
+                                % TODO: display graph of current largest pointset's RF for clicking center and edge
+                                p.center = input('center? ');
+                                p.searchDiameter = input('search diameter? ');
+                                p.spotDiameter = input('spot diameter? ');
+                            end
+
+                        elseif strcmp(imode, 'align')
+                            mode = 'temporalAlignment';
+
+                        elseif strcmp(imode, 'adapt')
+                            mode = 'adaptationRegion';
+                            p.positions = input('adaptation spot position [x1, y1]? ');
+                            p.adaptationSpotFrequency = input('flicker frequency? ');
+                            p.adaptationSpotDiameter = input('adaptation spot diameter? ');
+                            p.probeSpotDiameter = input('probe spot diameter? ');
+                            p.probeSpotDuration = input('probe spot duration? (sec) ');
+
+                        elseif strcmp(imode, 'refvar')
+                            mode = 'refineVariance';
+                            p.variancePercentile = input('percentile of highest variance to refine (0-100)? ');
+                            p.numValueRepeats = input('num value repeats to add? ');
+                        
+                        elseif strcmp(imode, 'refedges')
+                            mode = 'refineEdges';
+                            p.slopePercentile = input('percentile of highest slope to refine (0-100)? ');
+                        end
+                        
+                        
+                        
+                    end
+
+                    runConfig = generateShapeStimulus(mode, p, analysisData); %#ok<*PROPLC,*PROP>
+                    obj.runConfig = runConfig;
+                    obj.shapeDataColumns = runConfig.shapeDataColumns;
+                    obj.shapeDataMatrix = runConfig.shapeDataMatrix;
+                    obj.autoStimTime = runConfig.stimTime;
+
+                    disp('this will run for %d sec', round(runConfig.stimTime / 1000))
+                    contin = input('go? ');
+                    if contin
+                        break;
                     end
                 end
                 
-                runConfig = generateShapeStimulus(mode, p, obj.shapeResponseFigure.analysisData); %#ok<*PROPLC,*PROP>
-                obj.runConfig = runConfig;
-                obj.shapeDataColumns = runConfig.shapeDataColumns;
-                obj.shapeDataMatrix = runConfig.shapeDataMatrix;
-                obj.autoStimTime = runConfig.stimTime;
             end
             
             % always continue if we're alternating and this is an excitatory epoch
@@ -222,11 +266,15 @@ classdef AutoCenter < StageProtocol
         end
         
         function preparePresentation(obj, presentation)
+            
+            col_intensity = not(cellfun('isempty', strfind(obj.shapeDataColumns, 'intensity')));
+            col_diameter = not(cellfun('isempty', strfind(obj.shapeDataColumns, 'diameter')));    
+            col_startTime = not(cellfun('isempty', strfind(obj.shapeDataColumns, 'startTime')));
+            col_endTime = not(cellfun('isempty', strfind(obj.shapeDataColumns, 'endTime')));
+            col_flickerFrequency = not(cellfun('isempty', strfind(obj.shapeDataColumns, 'flickerFrequency')));
+            
             %set bg
             obj.setBackground(presentation);
-            
-            circ = Ellipse();
-            presentation.addStimulus(circ);
             
             % GENERIC controller
             function c = shapeController(state, preTime, baseLevel, startTime, endTime, shapeData_someColumns, controllerIndex)
@@ -241,66 +289,86 @@ classdef AutoCenter < StageProtocol
                 end
             end
             
-            col_startTime = not(cellfun('isempty', strfind(obj.shapeDataColumns, 'startTime')));
-            col_endTime = not(cellfun('isempty', strfind(obj.shapeDataColumns, 'endTime')));
+            % Custom controllers
+            % flicker
+            function c = shapeFlickerController(state, preTime, baseLevel, startTime, endTime, shapeData_someColumns, controllerIndex)
+                % controllerIndex is to have multiple shapes simultaneously
+                t = state.time - preTime * 1e-3;
+                activeNow = (t > startTime & t < endTime);
+                if any(activeNow)
+                    actives = find(activeNow);
+                    [intensity, freq] = shapeData_someColumns(actives(controllerIndex),:);
+                    c = intensity * (cos(t * freq) > 0);
+                else
+                    c = baseLevel;
+                end
+            end
+            
+            
+
             %             TODO: change epoch property shapeData to shapeDataMatrix in
             %             analysis
             
-            % intensity
-            col_intensity = not(cellfun('isempty', strfind(obj.shapeDataColumns, 'intensity')));
-            controllerIntensity = PropertyController(circ, 'color', @(s)shapeController(s, obj.preTime, obj.meanLevel, ...
-                obj.shapeDataMatrix(:,col_startTime), ...
-                obj.shapeDataMatrix(:,col_endTime), ...
-                obj.shapeDataMatrix(:,col_intensity), 1));
-            presentation.addController(controllerIntensity);
+            % setup stimulus objects
+            numCircles = 2; % these are in order of shapes being detected in the active shape set from the start & end times
+            circles = cell(numCircles, 1);
+            for ci = 1:numCircles
+                circ = Ellipse();
+                circles{ci} = circ;
+                presentation.addStimulus(circles{ci});
+
+                % intensity
+                controllerIntensity = PropertyController(circ, 'color', @(s)shapeController(s, obj.preTime, obj.meanLevel, ...
+                    obj.shapeDataMatrix(:,col_startTime), ...
+                    obj.shapeDataMatrix(:,col_endTime), ...
+                    obj.shapeDataMatrix(:,col_intensity), ci));
+                presentation.addController(controllerIntensity);
+
+                % diameter X
+                controllerDiameterX = PropertyController(circ, 'radiusX', @(s)shapeController(s, obj.preTime, 100, ...
+                    obj.shapeDataMatrix(:,col_startTime), ...
+                    obj.shapeDataMatrix(:,col_endTime), ...
+                    obj.shapeDataMatrix(:,col_diameter) / 2, ci));
+                presentation.addController(controllerDiameterX);
+
+                % diameter Y
+                controllerDiameterY = PropertyController(circ, 'radiusY', @(s)shapeController(s, obj.preTime, 100, ...
+                    obj.shapeDataMatrix(:,col_startTime), ...
+                    obj.shapeDataMatrix(:,col_endTime), ...
+                    obj.shapeDataMatrix(:,col_diameter) / 2, ci));
+                presentation.addController(controllerDiameterY);
+
+                % position
+                mpp = obj.rigConfig.micronsPerPixel;
+                poscols = not(cellfun('isempty', strfind(obj.shapeDataColumns, 'X'))) | ...
+                    not(cellfun('isempty', strfind(obj.shapeDataColumns, 'Y')));
+                positions = obj.shapeDataMatrix(:,poscols);
+                positions_transformed = [positions(:,1)./mpp + obj.windowSize(1)/2, positions(:,2)./mpp + obj.windowSize(2)/2];
+                controllerPosition = PropertyController(circ, 'position', @(s)shapeController(s, obj.preTime, [0, 0], ...
+                    obj.shapeDataMatrix(:,col_startTime), ...
+                    obj.shapeDataMatrix(:,col_endTime), ...
+                    positions_transformed, ci));
+                presentation.addController(controllerPosition);
+
+                % flicker
+                controllerFlicker = PropertyController(circ, 'intensity', @(s)shapeFlickerController(s, obj.preTime, obj.meanLevel, ...
+                    obj.shapeDataMatrix(:,col_startTime), ...
+                    obj.shapeDataMatrix(:,col_endTime), ...
+                    obj.shapeDataMatrix(:,[col_intensity,col_flickerFrequency]), ci));
+                presentation.addController(controllerFlicker);
             
-            % diameter X
-            col_diameter = not(cellfun('isempty', strfind(obj.shapeDataColumns, 'diameter')));
-            controllerDiameterX = PropertyController(circ, 'radiusX', @(s)shapeController(s, obj.preTime, 100, ...
-                obj.shapeDataMatrix(:,col_startTime), ...
-                obj.shapeDataMatrix(:,col_endTime), ...
-                obj.shapeDataMatrix(:,col_diameter) / 2, 1));
-            presentation.addController(controllerDiameterX);
-            
-            % diameter Y
-            controllerDiameterY = PropertyController(circ, 'radiusY', @(s)shapeController(s, obj.preTime, 100, ...
-                obj.shapeDataMatrix(:,col_startTime), ...
-                obj.shapeDataMatrix(:,col_endTime), ...
-                obj.shapeDataMatrix(:,col_diameter) / 2, 1));
-            presentation.addController(controllerDiameterY);
-            
-            % position
-            mpp = obj.rigConfig.micronsPerPixel;
-            poscols = not(cellfun('isempty', strfind(obj.shapeDataColumns, 'X'))) | ...
-                not(cellfun('isempty', strfind(obj.shapeDataColumns, 'Y')));
-            positions = obj.shapeDataMatrix(:,poscols);
-            positions_transformed = [positions(:,1)./mpp + obj.windowSize(1)/2, positions(:,2)./mpp + obj.windowSize(2)/2];
-            controllerPosition = PropertyController(circ, 'position', @(s)shapeController(s, obj.preTime, [0, 0], ...
-                obj.shapeDataMatrix(:,col_startTime), ...
-                obj.shapeDataMatrix(:,col_endTime), ...
-                positions_transformed, 1));
-            presentation.addController(controllerPosition);
+            end % circle loop
             
             preparePresentation@StageProtocol(obj, presentation);
         end
         
         
         function stimTime = get.stimTime(obj)
-            % add a bit to the end to make sure we get all the spots
-%             dbstack
             stimTime = obj.autoStimTime;
-%             if isempty(obj.epochNum)
-%                 stimTime = round(1000 * (4.0 + 2.0));
-%             elseif obj.epochNum <= 1
-%                 stimTime = round(1000 * (6));
-%             else
-%                 stimTime = round(1000 * (obj.spotTotalTime * obj.numSpots * obj.numValues * obj.numValueRepeats + 1.0));
-%             end
         end
         
         function values = get.values(obj)
             values = linspace(obj.valueMin, obj.valueMax, obj.numValues);
-            %             disp(mat2str(values))
             values = mat2str(values, 2);
         end
         
