@@ -181,7 +181,7 @@ classdef AutoCenter < StageProtocol
                         
                         
                         % choose next measurement
-                        disp('map, curves, adapt, align, refvar');
+                        disp('map, curves, adapt, align, refvar','quit');
                         imode = input('measurement? ','s');
                         
                         if strcmp(imode, 'curves') % response curves
@@ -206,7 +206,7 @@ classdef AutoCenter < StageProtocol
 
                         elseif strcmp(imode, 'adapt')
                             mode = 'adaptationRegion';
-                            p.positions = input('adaptation spot position [x1, y1]? ');
+                            p.adaptationSpotPositions = input('adaptation spot position [x1, y1]? ');
                             p.adaptationSpotFrequency = input('flicker frequency? ');
                             p.adaptationSpotDiameter = input('adaptation spot diameter? ');
                             p.probeSpotDiameter = input('probe spot diameter? ');
@@ -220,6 +220,9 @@ classdef AutoCenter < StageProtocol
                         elseif strcmp(imode, 'refedges')
                             mode = 'refineEdges';
                             p.slopePercentile = input('percentile of highest slope to refine (0-100)? ');
+                        
+                        elseif strcmp(imode, 'quit')    
+                            mode = 'null';
                         end
                         
                         
