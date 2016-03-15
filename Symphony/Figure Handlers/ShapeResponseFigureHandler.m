@@ -36,7 +36,7 @@ classdef ShapeResponseFigureHandler < FigureHandler
             ip.addParamValue('EndTime', 0, @(x)isnumeric(x));
             ip.addParamValue('SpikeThreshold', 10, @(x)isnumeric(x));
             ip.addParamValue('SpikeDetectorMode', 'Stdev', @(x)ischar(x));
-            ip.addParamValue('shapePlotMode', 'spatial', @(x)ischar(x));
+            ip.addParamValue('shapePlotMode', 'plotSpatial_mean', @(x)ischar(x));
             
             
             % Allow deviceName to be an optional parameter.
@@ -122,7 +122,7 @@ classdef ShapeResponseFigureHandler < FigureHandler
 %             disp(obj.outputData)
 %             figure(11)
             clf;
-            if strcmp(obj.shapePlotMode, 'spatial') && obj.epochIndex == 1
+            if strcmp(obj.shapePlotMode, 'plotSpatial_mean') && obj.epochIndex == 1
                 spm = 'temporalAlignment';
             else
                 spm = obj.shapePlotMode;

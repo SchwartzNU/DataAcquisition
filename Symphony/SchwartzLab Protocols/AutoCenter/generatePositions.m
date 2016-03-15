@@ -66,9 +66,9 @@ elseif strcmp(mode, 'random')
     for si = 2:numSpots % let first be [0,0]
         minDistToOtherSpot = 0; % the minimum space between this and all other spots
         haltCounter = 0; % don't keep trying forever if input is too difficult
-        while (minDistToOtherSpot < exclusionDistance || distFromCenter > searchRadius) && haltCounter < 100
+        while (minDistToOtherSpot < exclusionDistance || distFromOrigin > searchRadius) && haltCounter < 100
             pos = searchRadius / 2 * randn(1, 2);
-            distFromCenter = sqrt(sum(pos.^2));
+            distFromOrigin = sqrt(sum(pos.^2));
             minDistToOtherSpot = Inf;
             for os = 1:si
                 minDistToOtherSpot = min(minDistToOtherSpot, sqrt(sum((pos - positions(os,:)).^2)));
@@ -77,6 +77,7 @@ elseif strcmp(mode, 'random')
         end
         positions(si,:) = pos;
     end
+    
 elseif strcmp(mode, 'triangular')
     searchRadius = settings(1);
     spotSpacing = settings(2);
@@ -85,13 +86,12 @@ elseif strcmp(mode, 'triangular')
     n = ceil(minSideLen / spotSpacing);
     sidelen = n * spotSpacing;
 
-    center = [0 0];
+%     center = [0 0];
 
     tcorner = [-sidelen / 2, 0;
                0, sidelen * sqrt(3)/2;
                sidelen / 2, 0];
     tcorner = bsxfun(@plus, tcorner, -1*[0, sidelen * sqrt(3)/6]);
-    tcorner = bsxfun(@plus, tcorner, center);
 
     positions = [];
     point_index = 0;
@@ -100,19 +100,28 @@ elseif strcmp(mode, 'triangular')
         for j = 0 : n - i
             k = n - i - j;
             pos = ( i * tcorner(1,:) + j * tcorner(2,:) + k * tcorner(3,:) ) / n;
-            distFromCenter = sqrt(sum((pos - center).^2));
-            if distFromCenter <= searchRadius
+            distFromOrigin = sqrt(sum(pos.^2));
+            if distFromOrigin <= searchRadius
                 point_index = point_index + 1;
                 positions(point_index, 1:2) = pos;
             end
         end
     end
     
-    % add spacing to avoid adjacent successive spots 
+    % reorder to avoid adjacent successive spots 
     order = (1:2:length(positions))';
     order = vertcat(order, order + 1);
     order = order(1:length(positions));
-    positions = positions(order, :);    
+    positions = positions(order, :);
+    
+    % rotate by a random angle to enable generation of a new set of positions from the same parameters
+    theta = rand(1) * pi;
+    R = [cos(theta) -sin(theta); sin(theta) cos(theta)];
+    for p = 1:size(positions, 1);
+        positions(p,:) = (R * positions(p,:)')';
+    end
+    
+%     positions = bsxfun(@plus, positions, center);
     
 end
     
