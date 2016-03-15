@@ -221,7 +221,7 @@ classdef AutoCenter < StageProtocol
                             mode = 'refineEdges';
                             p.slopePercentile = input('percentile of highest slope to refine (0-100)? ');
                         
-                        elseif strcmp(imode, 'quit')    
+                        elseif strcmp(imode, 'quit')
                             mode = 'null';
                         end
                         
@@ -313,7 +313,7 @@ classdef AutoCenter < StageProtocol
             %             analysis
             
             % setup stimulus objects
-            numCircles = 2; % these are in order of shapes being detected in the active shape set from the start & end times
+            numCircles = obj.runConfig.numShapes; % these are in order of shapes being detected in the active shape set from the start & end times
             circles = cell(numCircles, 1);
             for ci = 1:numCircles
                 circ = Ellipse();
