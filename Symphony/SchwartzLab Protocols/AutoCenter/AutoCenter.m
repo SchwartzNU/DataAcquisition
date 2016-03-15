@@ -162,20 +162,27 @@ classdef AutoCenter < StageProtocol
                 %             obj.runTimeSeconds;
 
                 if ~obj.interactiveMode
-                    mode = 'receptiveField';
+                    
+                    if obj.epochNum == 1
+                        mode = 'temporalAlignment';
+                        runConfig = generateShapeStimulus(mode, p, analysisData);
+                        
+                    else
+                        mode = 'receptiveField';
 
-                    increasedRes = false;
-                    while true;
-                        runConfig = generateShapeStimulus(mode, p, analysisData); %#ok<*PROPLC,*PROP>
-                        if runConfig.stimTime > 120e3
-                            p.mapResolution = round(p.mapResolution * 1.1);
-                            increasedRes = true;
-                        else
-                            break
+                        increasedRes = false;
+                        while true;
+                            runConfig = generateShapeStimulus(mode, p, analysisData); %#ok<*PROPLC,*PROP>
+                            if runConfig.stimTime > 120e3
+                                p.mapResolution = round(p.mapResolution * 1.1);
+                                increasedRes = true;
+                            else
+                                break
+                            end
                         end
-                    end
-                    if increasedRes
-                        fprintf('Epoch stim time too long; increased map resolution to %d um', p.mapResolution)
+                        if increasedRes
+                            fprintf('Epoch stim time too long; increased map resolution to %d um', p.mapResolution)
+                        end
                     end
                 else
                     % INTERACTIVE MODE
@@ -193,7 +200,7 @@ classdef AutoCenter < StageProtocol
                         
                         
                         % choose next measurement
-                        disp('map, curves, adapt, align, refvar','quit');
+                        disp('map, curves, adapt, align, refvar, quit');
                         imode = input('measurement? ','s');
                         
                         if strcmp(imode, 'curves') % response curves
@@ -219,11 +226,17 @@ classdef AutoCenter < StageProtocol
                             
                         elseif strcmp(imode, 'adapt')
                             mode = 'adaptationRegion';
-                            p.adaptationSpotPositions = input('adaptation spot position [x1, y1]? ');
-                            p.adaptationSpotFrequency = input('flicker frequency? ');
-                            p.adaptationSpotDiameter = input('adaptation spot diameter? ');
-                            p.probeSpotDiameter = input('probe spot diameter? ');
-                            p.probeSpotDuration = input('probe spot duration? (sec) ');
+                            p.adaptationSpotPositions = [10,10];%input('adaptation spot position [x1, y1]? ');
+                            p.adaptationSpotFrequency = 10;%input('flicker frequency? ');
+                            p.adaptationSpotDiameter = 6; %input('adaptation spot diameter? ');
+                            p.adaptationSpotIntensity = 1.0;
+                            p.probeSpotDiameter = 15; %input('probe spot diameter? ');
+                            p.probeSpotDuration = .1; %input('probe spot duration? (sec) ');
+                            p.adaptSpotWarmupTime = 4;
+                            p.probeSpotPositionRadius = 80;
+                            p.probeSpotSpacing = 30;
+                            p.probeSpotRepeats = 2;
+                            p.probeSpotValues = [0.1, 0.5];
                             
                         elseif strcmp(imode, 'refvar')
                             mode = 'refineVariance';
@@ -239,6 +252,7 @@ classdef AutoCenter < StageProtocol
                         end
                         
                         runConfig = generateShapeStimulus(mode, p, analysisData); %#ok<*PROPLC,*PROP>
+%                         sdm = runConfig.shapeDataMatrix
                         
                         sprintf('this will run for %d sec', round(runConfig.stimTime / 1000))
                         contin = input('go? ');
@@ -296,7 +310,11 @@ classdef AutoCenter < StageProtocol
                 activeNow = (t > startTime & t < endTime);
                 if any(activeNow)
                     actives = find(activeNow);
-                    c = shapeData_someColumns(actives(controllerIndex),:);
+                    if controllerIndex <= length(actives)
+                        c = shapeData_someColumns(actives(controllerIndex),:);
+                    else
+                        c = baseLevel;
+                    end
                 else
                     c = baseLevel;
                 end
@@ -309,14 +327,15 @@ classdef AutoCenter < StageProtocol
                 t = state.time - preTime * 1e-3;
                 activeNow = (t > startTime & t < endTime);
                 if any(activeNow)
-                    allActives = find(activeNow);
-                    myActive = allActives(controllerIndex);
-                    numVals = size(shapeData_someColumns, 2);
-                    vals = zeros(numVals, 1);
-                    for ii = 1:numVals
-                        vals(ii,1) = shapeData_someColumns(myActive,ii);
+                    actives = find(activeNow);
+                    if controllerIndex <= length(actives)
+                        myActive = actives(controllerIndex);
+                        vals = shapeData_someColumns(myActive,:);
+                        % [intensity, frequency, start]
+                        c = vals(1) * (cos(2 * pi * (t - vals(3)) * vals(2)) > 0);
+                    else
+                        c = baseLevel;
                     end
-                    c = vals(1) * (cos(t * vals(2)) > 0);
                 else
                     c = baseLevel;
                 end
@@ -369,11 +388,11 @@ classdef AutoCenter < StageProtocol
                 presentation.addController(controllerPosition);
                 
                 % flicker
-                sdm_intflic = obj.shapeDataMatrix(:,col_intensity | col_flickerFrequency);
+                sdm_intflicstart = obj.shapeDataMatrix(:,[find(col_intensity), find(col_flickerFrequency), find(col_startTime)]);
                 controllerFlicker = PropertyController(circ, 'color', @(s)shapeFlickerController(s, obj.preTime, obj.meanLevel, ...
                     obj.shapeDataMatrix(:,col_startTime), ...
                     obj.shapeDataMatrix(:,col_endTime), ...
-                    sdm_intflic, ci));
+                    sdm_intflicstart, ci));
                 presentation.addController(controllerFlicker);
                 
             end % circle loop
