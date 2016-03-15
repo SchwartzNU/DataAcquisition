@@ -226,17 +226,19 @@ classdef AutoCenter < StageProtocol
                             
                         elseif strcmp(imode, 'adapt')
                             mode = 'adaptationRegion';
-                            p.adaptationSpotPositions = [10,10];%input('adaptation spot position [x1, y1]? ');
-                            p.adaptationSpotFrequency = 10;%input('flicker frequency? ');
+                            p.adaptationSpotPositions = 120 * [1,1; -1,-1; 1, -1; -1, 1];%input('adaptation spot position [x1, y1]? ');
+%                             p.adaptationSpotPositions = generatePositions('triangular', [100, 100]);
+%                             p.adaptationSpotPositions = 120 * 
+                            p.adaptationSpotFrequency = 20;%input('flicker frequency? ');
                             p.adaptationSpotDiameter = 6; %input('adaptation spot diameter? ');
                             p.adaptationSpotIntensity = 1.0;
                             p.probeSpotDiameter = 15; %input('probe spot diameter? ');
-                            p.probeSpotDuration = .1; %input('probe spot duration? (sec) ');
-                            p.adaptSpotWarmupTime = 4;
-                            p.probeSpotPositionRadius = 80;
+                            p.probeSpotDuration = .15; %input('probe spot duration? (sec) ');
+                            p.adaptSpotWarmupTime = 5;
+                            p.probeSpotPositionRadius = 60;
                             p.probeSpotSpacing = 30;
-                            p.probeSpotRepeats = 2;
-                            p.probeSpotValues = [0.1, 0.5];
+                            p.probeSpotRepeats = 1;
+                            p.probeSpotValues = [0.3];
                             
                         elseif strcmp(imode, 'refvar')
                             mode = 'refineVariance';
@@ -254,7 +256,8 @@ classdef AutoCenter < StageProtocol
                         runConfig = generateShapeStimulus(mode, p, analysisData); %#ok<*PROPLC,*PROP>
 %                         sdm = runConfig.shapeDataMatrix
                         
-                        sprintf('this will run for %d sec', round(runConfig.stimTime / 1000))
+                        p
+                        fprintf('Stimulus will run for %d sec', round(runConfig.stimTime / 1000))
                         contin = input('go? ');
                         if contin
                             break;
