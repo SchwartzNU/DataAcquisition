@@ -164,15 +164,15 @@ classdef AutoCenter < StageProtocol
                 if ~obj.interactiveMode
                     
                     if obj.epochNum == 1
-                        mode = 'temporalAlignment';
-                        runConfig = generateShapeStimulus(mode, p, analysisData);
+                        p.mode = 'temporalAlignment';
+                        runConfig = generateShapeStimulus(p, analysisData);
                         
                     else
-                        mode = 'receptiveField';
+                        p.mode = 'receptiveField';
 
                         increasedRes = false;
                         while true;
-                            runConfig = generateShapeStimulus(mode, p, analysisData); %#ok<*PROPLC,*PROP>
+                            runConfig = generateShapeStimulus(p, analysisData); %#ok<*PROPLC,*PROP>
                             if runConfig.stimTime > 120e3
                                 p.mapResolution = round(p.mapResolution * 1.1);
                                 increasedRes = true;
@@ -204,14 +204,14 @@ classdef AutoCenter < StageProtocol
                         imode = input('measurement? ','s');
                         
                         if strcmp(imode, 'curves') % response curves
-                            mode = 'responseCurves';
+                            p.mode = 'responseCurves';
                             p.numSpots = input('num positions? ');
                             p.generatePositions = false;
                             p.numValues = input('num values? ');
                             p.numValueRepeats = input('num value repeats? ');
                             
                         elseif strcmp(imode, 'map')
-                            mode = 'receptiveField';
+                            p.mode = 'receptiveField';
                             p.generatePositions = input('generate new positions? ');
                             if p.generatePositions
                                 % TODO: display graph of current largest pointset's RF for clicking center and edge
@@ -222,10 +222,10 @@ classdef AutoCenter < StageProtocol
                             end
                             
                         elseif strcmp(imode, 'align')
-                            mode = 'temporalAlignment';
+                            p.mode = 'temporalAlignment';
                             
                         elseif strcmp(imode, 'adapt')
-                            mode = 'adaptationRegion';
+                            p.mode = 'adaptationRegion';
                             p.adaptationSpotPositions = 120 * [1,1; -1,-1; 1, -1; -1, 1];%input('adaptation spot position [x1, y1]? ');
 %                             p.adaptationSpotPositions = generatePositions('triangular', [100, 100]);
 %                             p.adaptationSpotPositions = 120 * 
@@ -241,23 +241,23 @@ classdef AutoCenter < StageProtocol
                             p.probeSpotValues = [0.3];
                             
                         elseif strcmp(imode, 'refvar')
-                            mode = 'refineVariance';
+                            p.mode = 'refineVariance';
                             p.variancePercentile = input('percentile of highest variance to refine (0-100)? ');
                             p.numValueRepeats = input('num value repeats to add? ');
                             
                         elseif strcmp(imode, 'refedges')
-                            mode = 'refineEdges';
+                            p.mode = 'refineEdges';
                             p.slopePercentile = input('percentile of highest slope to refine (0-100)? ');
                             
                         elseif strcmp(imode, 'quit')
-                            mode = 'null';
+                            p.mode = 'null';
                         end
                         
-                        runConfig = generateShapeStimulus(mode, p, analysisData); %#ok<*PROPLC,*PROP>
+                        runConfig = generateShapeStimulus(p, analysisData); %#ok<*PROPLC,*PROP>
 %                         sdm = runConfig.shapeDataMatrix
                         
-                        p
-                        fprintf('Stimulus will run for %d sec', round(runConfig.stimTime / 1000))
+                        p %#ok<NOPRT>
+                        fprintf('Stimulus will run for %d sec.\n', round(runConfig.stimTime / 1000))
                         contin = input('go? ');
                         if contin
                             break;
