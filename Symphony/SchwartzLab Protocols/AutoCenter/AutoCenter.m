@@ -173,7 +173,7 @@ classdef AutoCenter < StageProtocol
                         increasedRes = false;
                         while true;
                             runConfig = generateShapeStimulus(p, analysisData); %#ok<*PROPLC,*PROP>
-                            if runConfig.stimTime > 120e3
+                            if runConfig.stimTime > 80e3
                                 p.mapResolution = round(p.mapResolution * 1.1);
                                 increasedRes = true;
                             else
@@ -181,7 +181,7 @@ classdef AutoCenter < StageProtocol
                             end
                         end
                         if increasedRes
-                            fprintf('Epoch stim time too long; increased map resolution to %d um', p.mapResolution)
+                            fprintf('Epoch stim time too long (> 80 sec); increased map resolution to %d um', p.mapResolution)
                         end
                     end
                 else
