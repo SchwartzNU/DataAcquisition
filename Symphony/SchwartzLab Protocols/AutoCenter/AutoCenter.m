@@ -135,7 +135,7 @@ classdef AutoCenter < StageProtocol
                 end
                 fprintf('setting amp voltage: %d mV; waiting 3 sec for stability\n', obj.ampHoldSignal);
                 obj.setDeviceBackground(obj.amp, obj.ampHoldSignal, 'mV'); % actually set it
-                pause(3)
+                pause(6)
             end
             
             if generateNewStimulus
@@ -181,7 +181,7 @@ classdef AutoCenter < StageProtocol
                             end
                         end
                         if increasedRes
-                            fprintf('Epoch stim time too long (> 80 sec); increased map resolution to %d um', p.mapResolution)
+                            fprintf('Epoch stim time too long (> 80 sec); increased map resolution to %d um\n', p.mapResolution)
                         end
                     end
                 else
@@ -226,19 +226,21 @@ classdef AutoCenter < StageProtocol
                             
                         elseif strcmp(imode, 'adapt')
                             p.mode = 'adaptationRegion';
-                            p.adaptationSpotPositions = 120 * [1,1; -1,-1; 1, -1; -1, 1];%input('adaptation spot position [x1, y1]? ');
+%                             p.adaptationSpotPositions = 100 * [1,1; -1,-1; 1, -1; -1, 1];%input('adaptation spot position [x1, y1]? ');
+                            
+                            p.adaptationSpotPositions = 100 * [-1,0; 0,0];%input('adaptation spot position [x1, y1]? ');
 %                             p.adaptationSpotPositions = generatePositions('triangular', [100, 100]);
 %                             p.adaptationSpotPositions = 120 * 
                             p.adaptationSpotFrequency = 20;%input('flicker frequency? ');
-                            p.adaptationSpotDiameter = 6; %input('adaptation spot diameter? ');
+                            p.adaptationSpotDiameter = 4; %input('adaptation spot diameter? ');
                             p.adaptationSpotIntensity = 1.0;
-                            p.probeSpotDiameter = 15; %input('probe spot diameter? ');
-                            p.probeSpotDuration = .15; %input('probe spot duration? (sec) ');
-                            p.adaptSpotWarmupTime = 5;
+                            p.probeSpotDiameter = 13; %input('probe spot diameter? ');
+                            p.probeSpotDuration = .25; %input('probe spot duration? (sec) ');
+                            p.adaptSpotWarmupTime = 8;
                             p.probeSpotPositionRadius = 60;
-                            p.probeSpotSpacing = 30;
-                            p.probeSpotRepeats = 1;
-                            p.probeSpotValues = [0.3];
+                            p.probeSpotSpacing = 20;
+                            p.probeSpotRepeats = 2;
+                            p.probeSpotValues = [0.1, .3];
                             
                         elseif strcmp(imode, 'refvar')
                             p.mode = 'refineVariance';

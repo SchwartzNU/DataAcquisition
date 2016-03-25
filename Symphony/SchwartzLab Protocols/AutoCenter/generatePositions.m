@@ -81,6 +81,7 @@ elseif strcmp(mode, 'random')
 elseif strcmp(mode, 'triangular')
     searchRadius = settings(1);
     spotSpacing = settings(2);
+    rotation = settings(3);
 
     minSideLen = sqrt(3) * searchRadius * 2;
     n = ceil(minSideLen / spotSpacing);
@@ -115,7 +116,8 @@ elseif strcmp(mode, 'triangular')
     positions = positions(order, :);
     
     % rotate by a random angle to enable generation of a new set of positions from the same parameters
-    theta = rand(1) * pi;
+%     theta = rand(1) * pi;
+    theta = rotation;
     R = [cos(theta) -sin(theta); sin(theta) cos(theta)];
     for p = 1:size(positions, 1);
         positions(p,:) = (R * positions(p,:)')';
