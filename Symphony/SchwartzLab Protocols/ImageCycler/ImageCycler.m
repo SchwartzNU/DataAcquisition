@@ -39,6 +39,7 @@ classdef ImageCycler < StageProtocol
         Nparams %max 3
         paramLen
         config
+        orderOfImages
     end
             
     methods
@@ -66,6 +67,9 @@ classdef ImageCycler < StageProtocol
             global DEMO_MODE;
             % Call the base method.
             prepareRun@StageProtocol(obj);
+            
+            %For randomization... (Adam 10/15/15)
+            obj.orderOfImages = 1:obj.Nconditions;
             
             %figure out configuration from configFile
             load(obj.configFile, 'config');
@@ -106,7 +110,11 @@ classdef ImageCycler < StageProtocol
             % Call the base method.
             prepareEpoch@StageProtocol(obj, epoch);
             
-            linearInd = mod(obj.numEpochsQueued, obj.Nconditions) + 1;
+            if mod(obj.numEpochsQueued, obj.Nconditions) == 0
+               obj.orderOfImages = obj.orderOfImages(randperm(obj.Nconditions)); 
+            end
+            
+            linearInd = obj.orderOfImages( mod(obj.numEpochsQueued, obj.Nconditions) + 1 );
             if obj.Nparams == 1
                 obj.imageName = [obj.config.baseName '_' linearInd '.png'];
                 epoch.addParameter(obj.imageParams{1}, obj.config.(obj.imageParams{1})(linearInd)); 
