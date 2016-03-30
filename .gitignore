@@ -1,6 +1,11 @@
+*.bak
+*.m~
+*.asv
 /SymphonyAnalysis
 /debug_logs
 /oldTestingFiles
 /tree
 /GUILayout-v1p17
 startup.m
+*.bak
+*.DS_Store

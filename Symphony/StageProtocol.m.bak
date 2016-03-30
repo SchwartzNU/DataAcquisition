@@ -126,9 +126,18 @@ classdef StageProtocol < PulsedProtocol
             
             if ~DEMO_MODE %don't open response figures in demo moe
                 % Open figures for single trial responses of both amps
-                obj.openFigure('Response', obj.amp, 'StartTime', obj.stimStart, 'EndTime', obj.stimEnd);
-                if ~isempty(obj.amp2)
-                    obj.openFigure('Response', obj.amp2, 'StartTime', obj.stimStart, 'EndTime', obj.stimEnd, 'LineColor', 'r');
+                if strcmp(obj.ampMode, 'Cell attached') % detect spikes if cell attached
+                    obj.openFigure('Response', obj.amp, 'StartTime', obj.stimStart, 'EndTime', obj.stimEnd, ...
+                        'SpikeDetectorMode', obj.spikeDetection, 'SpikeThreshold', obj.spikeThreshold);
+                    if ~isempty(obj.amp2)
+                        obj.openFigure('Response', obj.amp2, 'StartTime', obj.stimStart, 'EndTime', obj.stimEnd, 'LineColor', 'r', ...
+                        'SpikeDetectorMode', obj.spikeDetection, 'SpikeThreshold', obj.spikeThreshold);
+                    end
+                else
+                    obj.openFigure('Response', obj.amp, 'StartTime', obj.stimStart, 'EndTime', obj.stimEnd);
+                    if ~isempty(obj.amp2)
+                        obj.openFigure('Response', obj.amp2, 'StartTime', obj.stimStart, 'EndTime', obj.stimEnd, 'LineColor', 'r');
+                    end
                 end
             end
             
@@ -218,7 +227,8 @@ classdef StageProtocol < PulsedProtocol
             if obj.isSamePresentation(presentation, obj.lastPresentation) && ...
                     obj.bitDepth == obj.lastBitDepth && ...
                     isempty(strfind(obj.displayName, 'White Noise')) && ...
-                    isempty(strfind(obj.displayName, 'STA'))
+                    isempty(strfind(obj.displayName, 'STA')) && ...
+                    isempty(strfind(obj.displayName, 'Matrix'))
                 %same presentation and bit depth
                 %HACK: do not do this for white noise! It made all stimuli
                 %repeat!
