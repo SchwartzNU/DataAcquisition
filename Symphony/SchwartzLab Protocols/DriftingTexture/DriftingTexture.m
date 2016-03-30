@@ -79,7 +79,7 @@ classdef DriftingTexture < StageProtocol
                    max(obj.windowSize) * 1.42, ]; % pixels
             res = round(res / obj.resScaleFactor);
             
-            fprintf('making texture (%d x %d)\n', res(1), res(2));
+            fprintf('making texture (%d x %d) with blur sigma %d pixels\n', res(1), res(2), sigma);
 
             stream = RandStream('mt19937ar','Seed',obj.randomSeed);
             M = randn(stream, res);
