@@ -7,6 +7,7 @@ classdef OneDimensionalResposeFigureHandler < FigureHandler
     
     properties (Constant)
         figureType = '1D Response'
+        version = 2
     end
     
     properties
@@ -144,6 +145,35 @@ classdef OneDimensionalResposeFigureHandler < FigureHandler
                         stimRate = stimSpikeRate;
                         responseVal = stimRate; %recalculated below
                         obj.responseUnits = 'spikes (norm)';
+                        
+%                         ang = epoch.getParameter(obj.epochParam);
+%                         responseVal = 1.0 + 1.0 * cos(ang*pi/180);
+                        
+                    case 'Spike mean time'
+                        %count spikes in stimulus interval
+                        validSpikeTimes = sp(sp>=obj.stimStart & sp<obj.stimEnd) - obj.stimStart;
+                        
+                        obj.Ntrials = obj.Ntrials + 1;
+                        responseVal = mean(validSpikeTimes);
+                        obj.responseUnits = 'time (s)';
+
+%                         ang = epoch.getParameter(obj.epochParam);
+%                         responseVal = 1.0 + rand() * 0.3 * cos(ang*pi/180);
+                        
+                        
+                    case 'Spike start time'
+                        %count spikes in stimulus interval
+                        validSpikeTimes = sp(sp>=obj.stimStart & sp<obj.stimEnd) - obj.stimStart;
+                        if ~isempty(validSpikeTimes)
+                            firstSpikeTime = validSpikeTimes(1);
+                        else
+                            firstSpikeTime = 0;
+                        end
+
+                        obj.Ntrials = obj.Ntrials + 1;
+                        responseVal = firstSpikeTime;
+                        obj.responseUnits = 'time (s)';
+                        
                     case 'CycleAvgF1'
                         stimLen = obj.stimEnd - obj.stimStart; %samples
                         stimSpikes = sp(sp>=obj.stimStart & sp<obj.stimEnd) - obj.stimStart; %offset to start of stim
@@ -154,7 +184,7 @@ classdef OneDimensionalResposeFigureHandler < FigureHandler
                         bins = 0:samplesPerBin:stimLen;
                         
                         %compute PSTH for this epoch
-                        spCount = histc(sp,bins);
+                        spCount = histc(stimSpikes,bins);
                         if isempty(spCount)
                             spCount = zeros(1,length(bins));
                         end
