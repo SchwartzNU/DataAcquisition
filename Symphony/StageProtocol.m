@@ -352,34 +352,34 @@ classdef StageProtocol < PulsedProtocol
         function samePres = isSamePresentation(pres1, pres2)
             %disp('checking presentation equality')
             samePres = 0;            
-            if isempty(pres1) || isempty(pres2)
-                return;
-            end
-            %keyboard;
-            controllers_p1 = pres1.controllers;
-            controllers_p2 = pres2.controllers;
-            
-            p1.duration = pres1.duration;
-            p1.stimuli = pres1.stimuli;
-            p2.duration = pres2.duration;
-            p2.stimuli = pres2.stimuli;
-            
-            %disp('checking stimuli')
-            if ~isequal(p1, p2)
-                return
-            end
-            L = length(controllers_p1);
-            if L ~= length(controllers_p2), return; end
-            %temp - not checking controllers! They are empty!
-            %disp('checking controllers')
-%             for i=1:L
-%                 cont1 = controllers_p1{i};
-%                 cont2 = controllers_p2{i};                
-%                 if ~isequal(cont1{1},cont2{1}), return; end
-%                 if ~isequal(cont1{2},cont2{2}), return; end
-%                 if ~isequal(func2str(cont1{3}),func2str(cont2{3})), return; end
+%             if isempty(pres1) || isempty(pres2)
+%                 return;
 %             end
-            samePres = 1;
+%             %keyboard;
+%             controllers_p1 = pres1.controllers;
+%             controllers_p2 = pres2.controllers;
+%             
+%             p1.duration = pres1.duration;
+%             p1.stimuli = pres1.stimuli;
+%             p2.duration = pres2.duration;
+%             p2.stimuli = pres2.stimuli;
+%             
+%             %disp('checking stimuli')
+%             if ~isequal(p1, p2)
+%                 return
+%             end
+%             L = length(controllers_p1);
+%             if L ~= length(controllers_p2), return; end
+%             %temp - not checking controllers! They are empty!
+%             %disp('checking controllers')
+% %             for i=1:L
+% %                 cont1 = controllers_p1{i};
+% %                 cont2 = controllers_p2{i};                
+% %                 if ~isequal(cont1{1},cont2{1}), return; end
+% %                 if ~isequal(cont1{2},cont2{2}), return; end
+% %                 if ~isequal(func2str(cont1{3}),func2str(cont2{3})), return; end
+% %             end
+%             samePres = 1;
         end
     end
     
