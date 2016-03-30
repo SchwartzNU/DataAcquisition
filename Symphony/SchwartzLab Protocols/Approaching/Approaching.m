@@ -26,7 +26,7 @@ classdef Approaching < StageProtocol
         intensity = 0.5;
         %randSeed = 1;
         randPermut = false;
-        receeding = false;
+        receding = false;
         instantaneous = false;
         centerChecker = 'dark';
     end
@@ -74,7 +74,7 @@ classdef Approaching < StageProtocol
                 case 'squareSizeX'
                     p.units = 'um';
                     p.displayTab = 'mostUsed';
-                case {'finalScaleFactor','numSquares','randPermut','receeding','instantaneous'}
+                case {'finalScaleFactor','numSquares','randPermut','receding','instantaneous'}
                     p.displayTab = 'mostUsed';
                 case {'speedLateral'}
                     p.units = 'um/s';
@@ -109,8 +109,8 @@ classdef Approaching < StageProtocol
             %             disp(localInterleave)
             
             % Random interleaving of epochs
-            stimIsChecked = [obj.randPermut; obj.receeding; obj.instantaneous];
-            numInterleavedStimuli = double(1 + obj.randPermut + obj.receeding + obj.instantaneous); %1 is default - approaching.
+            stimIsChecked = [obj.randPermut; obj.receding; obj.instantaneous];
+            numInterleavedStimuli = double(1 + obj.randPermut + obj.receding + obj.instantaneous); %1 is default - approaching.
             numSingleStimEpochs = floor(double(obj.numberOfAverages)/numInterleavedStimuli);
             localInterleave = zeros(obj.numberOfAverages, 1);
             for I = 1:length(stimIsChecked)
@@ -118,7 +118,7 @@ classdef Approaching < StageProtocol
                     localInterleave(1+numSingleStimEpochs*(I-1):numSingleStimEpochs*I) = I;
                     %0  -approaching
                     %1  -shuffled
-                    %2  -receeding
+                    %2  -receding
                     %3  -instantaneous
                 end;
             end;
@@ -142,10 +142,10 @@ classdef Approaching < StageProtocol
                     obj.openFigure('PSTH', obj.amp, 'GroupByParams', 'curEpStim', ...
                         'StartTime', obj.stimStart, 'EndTime', obj.stimEnd, ...
                         'SpikeDetectorMode', obj.spikeDetection, 'SpikeThreshold', obj.spikeThreshold);
-                    obj.openFigure('1D Response', obj.amp, 'EpochParam', 'curEpStim', ...
-                        'StartTime', obj.stimStart + obj.startTimeOffset*1E-3/obj.sampleRate, 'EndTime', obj.stimEnd + obj.endTimeOffset*1E-3/obj.sampleRate, ...
-                        'Mode', 'Cell attached', ...
-                        'SpikeDetectorMode', obj.spikeDetection, 'SpikeThreshold', obj.spikeThreshold);
+%                     obj.openFigure('1D Response', obj.amp, 'EpochParam', 'curEpStim', ...
+%                         'StartTime', obj.stimStart + obj.startTimeOffset*1E-3/obj.sampleRate, 'EndTime', obj.stimEnd + obj.endTimeOffset*1E-3/obj.sampleRate, ...
+%                         'Mode', 'Cell attached', ...
+%                         'SpikeDetectorMode', obj.spikeDetection, 'SpikeThreshold', obj.spikeThreshold);
                 end
                 if ~isempty(obj.amp2)
                     if strcmp(obj.amp2Mode, 'Cell attached')
@@ -153,11 +153,11 @@ classdef Approaching < StageProtocol
                             'StartTime', obj.stimStart, 'EndTime', obj.stimEnd, ...
                             'SpikeDetectorMode', obj.amp2SpikeDetection, 'SpikeThreshold', obj.amp2SpikeThreshold, ...
                             'LineColor', 'r');
-                        obj.openFigure('1D Response', obj.amp, 'EpochParam', 'curEpStim', ...
-                            'StartTime', obj.stimStart + obj.startTimeOffset*1E-3/obj.sampleRate, 'EndTime', obj.stimEnd + obj.endTimeOffset*1E-3/obj.sampleRate, ...
-                            'Mode', 'Cell attached', ...
-                            'SpikeDetectorMode', obj.amp2SpikeDetection, 'SpikeThreshold', obj.amp2SpikeThreshold, ...
-                            'LineColor', 'r');
+%                         obj.openFigure('1D Response', obj.amp, 'EpochParam', 'curEpStim', ...
+%                             'StartTime', obj.stimStart + obj.startTimeOffset*1E-3/obj.sampleRate, 'EndTime', obj.stimEnd + obj.endTimeOffset*1E-3/obj.sampleRate, ...
+%                             'Mode', 'Cell attached', ...
+%                             'SpikeDetectorMode', obj.amp2SpikeDetection, 'SpikeThreshold', obj.amp2SpikeThreshold, ...
+%                             'LineColor', 'r');
                     end
                 end
             end
@@ -284,7 +284,7 @@ classdef Approaching < StageProtocol
                     %log spacing; random permutation option
                     alpha = log(finalFactor)/maxDynamicTime;
                     
-                    %Add shuffled and receeding versions of stimulus
+                    %Add shuffled and receding versions of stimulus
                     nFrames = round(maxDynamicTime*patternRate);
                     dynTimeAxis = (1:nFrames)/patternRate;
                     if curEpStim == 1
@@ -303,15 +303,22 @@ classdef Approaching < StageProtocol
                 
                 
                 if state.time<=(obj.preTime+obj.staticTimePre)/1E3
-                    sz = pixInitSize;
+                    if obj.curEpStim~=2
+                        sz = pixInitSize;
+                    else
+                        sz = pixInitSize * obj.finalScaleFactor;
+                    end;
                 elseif  state.time<=(obj.preTime+obj.staticTimePre+obj.trueDynamicTime)/1E3 %stimulus varying with time
                     t_dynamic = (state.time-(obj.preTime+obj.staticTimePre)/1E3);
                     sz = pixInitSize * scFactor(t_dynamic,obj.finalScaleFactor,obj.trueDynamicTime/1E3,obj.curEpStim, obj.patternRate);
                 else
-                    sz = pixInitSize * obj.finalScaleFactor;
+                    if obj.curEpStim~=2
+                        sz = pixInitSize * obj.finalScaleFactor;
+                    else
+                        sz = pixInitSize;
+                    end;
                 end;
-                
-                
+
             end
             
             % % % Make a property controller to propagate property of checkerboard % % %
