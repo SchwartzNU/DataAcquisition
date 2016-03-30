@@ -72,7 +72,7 @@ classdef DriftingTexture < StageProtocol
             obj.angles = rem(0:round(360/obj.Nangles):359, 360);
             
             % generate texture
-            sigma = 0.5 * obj.textureScale / obj.rigConfig.micronsPerPixel; % pixels
+            sigma = 0.5 * obj.textureScale / obj.resScaleFactor/ obj.rigConfig.micronsPerPixel; % pixels
             dist = obj.speed * obj.stimTime / 1000; % um / sec
             obj.moveDistance = dist;
             res = [max(obj.windowSize) * 1.42 + (dist / obj.rigConfig.micronsPerPixel),...
