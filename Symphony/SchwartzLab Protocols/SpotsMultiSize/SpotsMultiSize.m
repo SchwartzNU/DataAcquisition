@@ -21,6 +21,8 @@ classdef SpotsMultiSize < StageProtocol
         minSize = 50
         Nsteps = 10
         maxSize = 1500
+        
+        logScaling = false
     end
     
     properties
@@ -61,7 +63,11 @@ classdef SpotsMultiSize < StageProtocol
             prepareRun@StageProtocol(obj);
             
             %set spot size vector
-            obj.sizeVec = linspace(obj.minSize, obj.maxSize, obj.Nsteps);
+            if ~obj.logScaling
+                obj.sizeVec = linspace(obj.minSize, obj.maxSize, obj.Nsteps);
+            else
+                obj.sizeVec = logspace(log10(obj.minSize), log10(obj.maxSize), obj.Nsteps);
+            end
             
             
             if ~DEMO_MODE
