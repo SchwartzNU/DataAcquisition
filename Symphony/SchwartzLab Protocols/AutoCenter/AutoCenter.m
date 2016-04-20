@@ -133,7 +133,7 @@ classdef AutoCenter < StageProtocol
                     obj.ampHoldSignal = obj.inVoltage;
                     generateNewStimulus = false;
                 end
-                fprintf('setting amp voltage: %d mV; waiting 3 sec for stability\n', obj.ampHoldSignal);
+                fprintf('setting amp voltage: %d mV; waiting 6 sec for stability\n', obj.ampHoldSignal);
                 obj.setDeviceBackground(obj.amp, obj.ampHoldSignal, 'mV'); % actually set it
                 pause(6)
             end
