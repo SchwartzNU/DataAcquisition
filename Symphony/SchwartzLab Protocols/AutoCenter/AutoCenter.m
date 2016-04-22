@@ -52,6 +52,7 @@ classdef AutoCenter < StageProtocol
         startTime = 0;
         currentVoltageIndex
         runConfig
+        pointSetIndex
     end
     
     properties (Dependent)
@@ -93,6 +94,7 @@ classdef AutoCenter < StageProtocol
             obj.epochNum = 0;
             obj.startTime = clock;
             obj.autoContinueRun = 1;
+            obj.pointSetIndex = 0;
             
             if strcmp(obj.ampMode, 'Cell attached')
                 obj.alternateVoltage = false;
@@ -158,6 +160,8 @@ classdef AutoCenter < StageProtocol
                 p.numValues = obj.numValues;
                 p.numValueRepeats = obj.numValueRepeats;
                 p.epochNum = obj.epochNum;
+                obj.pointSetIndex = obj.pointSetIndex + 1;
+                p.pointSetIndex = obj.pointSetIndex;
                 
                 timeElapsed = etime(clock, obj.startTime);
                 p.timeRemainingSeconds = obj.runTimeSeconds - timeElapsed; %only update time remaining if new stim, so Inhibitory always runs
