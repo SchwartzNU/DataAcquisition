@@ -15,6 +15,7 @@ classdef AutoCenter < StageProtocol
         %in microns, use rigConfig to set microns per pixel
         spotDiameter = 22; %um
         searchDiameter = 300; %um
+        alignmentSpotDiameter = 150;
 %         numSpots = 100;
         mapResolution = 40; % um
         spotTotalTime = 0.3;
@@ -150,6 +151,7 @@ classdef AutoCenter < StageProtocol
 %                 p.numSpots = obj.numSpots;
                 p.spotTotalTime = obj.spotTotalTime;
                 p.spotOnTime = obj.spotOnTime;
+                p.alignmentSpotDiameter = obj.alignmentSpotDiameter;
                 
                 p.valueMin = obj.valueMin;
                 p.valueMax = obj.valueMax;
