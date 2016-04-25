@@ -23,7 +23,7 @@ classdef AutoCenter < StageProtocol
         exVoltage = -60; %mV
         inVoltage = 20; %mV
         
-        runTimeSeconds = 60;
+        numPointSets = 2;
         
         alternateVoltage = false; % WC only
         interactiveMode = false;
@@ -92,7 +92,7 @@ classdef AutoCenter < StageProtocol
             
             obj.sessionId = str2double(regexprep(num2str(fix(clock),'%1d'),' +','')); % this is how you get a datetime string number in MATLAB
             obj.epochNum = 0;
-            obj.startTime = clock;
+%             obj.startTime = clock;
             obj.autoContinueRun = 1;
             obj.pointSetIndex = 0;
             
@@ -163,8 +163,8 @@ classdef AutoCenter < StageProtocol
                 obj.pointSetIndex = obj.pointSetIndex + 1;
                 p.pointSetIndex = obj.pointSetIndex;
                 
-                timeElapsed = etime(clock, obj.startTime);
-                p.timeRemainingSeconds = obj.runTimeSeconds - timeElapsed; %only update time remaining if new stim, so Inhibitory always runs
+%                 timeElapsed = etime(clock, obj.startTime);
+%                 p.timeRemainingSeconds = obj.runTimeSeconds - timeElapsed; %only update time remaining if new stim, so Inhibitory always runs
                 %             obj.runTimeSeconds;
 
                 if ~obj.interactiveMode
@@ -286,19 +286,16 @@ classdef AutoCenter < StageProtocol
                 obj.autoContinueRun = obj.runConfig.autoContinueRun;
             end
             
-            % set next epoch voltage
-            if obj.epochNum == 1
-                obj.currentVoltageIndex = 1; % do excitatory next epoch
-            else
-                nextIndices = [2;1];
-                obj.currentVoltageIndex = nextIndices(obj.currentVoltageIndex);
-            end
+            % set next epoch voltage to alternate
+            nextIndices = [2;1];
+            obj.currentVoltageIndex = nextIndices(obj.currentVoltageIndex);
             
             epoch.addParameter('sessionId',obj.sessionId);
             epoch.addParameter('presentationId',obj.epochNum);
             epoch.addParameter('epochMode',obj.runConfig.epochMode);
             epoch.addParameter('shapeDataMatrix', obj.runConfig.shapeDataMatrix(:));
             epoch.addParameter('shapeDataColumns', strjoin(obj.runConfig.shapeDataColumns,','));
+            epoch.addParameter('rigOffsetAngle', obj.rigConfig.projectorAngleOffset);
             
             prepareEpoch@StageProtocol(obj, epoch);
         end
