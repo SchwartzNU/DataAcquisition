@@ -9,6 +9,7 @@ classdef RigA_OneAmp < RigConfiguration
         NDFattenuation = [0.0105, 8.0057e-05, 6.5631e-06, 5.5485e-07, 5.5485e-08, 5.5485e-09];
         fitBlue = [3.1690e-12, -2.2180e-09, 7.3530e-07, 1.0620e-05];
         fitGreen =[1.9510e-12, -1.4200e-09, 5.1430e-07, 9.6550e-06];
+        projectorAngleOffset = 180;
     end
     
     methods      
