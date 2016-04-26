@@ -298,7 +298,7 @@ classdef AutoCenter < StageProtocol
             epoch.addParameter('epochMode',obj.runConfig.epochMode);
             epoch.addParameter('shapeDataMatrix', obj.runConfig.shapeDataMatrix(:));
             epoch.addParameter('shapeDataColumns', strjoin(obj.runConfig.shapeDataColumns,','));
-            epoch.addParameter('rigOffsetAngle', obj.rigConfig.projectorAngleOffset);
+            epoch.addParameter('angleOffsetForRigAndStimulus', obj.rigConfig.projectorAngleOffset);
             
             prepareEpoch@StageProtocol(obj, epoch);
         end
