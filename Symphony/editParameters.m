@@ -413,7 +413,7 @@ function value = getParamValueFromUI(handles, paramName)
             paramValue = get(handles.(paramTag), 'String');
             convFunc = str2func(class(defaultValue));
             value = convFunc(paramValue);
-            %GWS moved this
+            %GWS moved this, then sam fixed it
         else
             value = str2double(get(handles.(paramTag), 'String'));
         end      
