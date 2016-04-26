@@ -409,9 +409,8 @@ function value = getParamValueFromUI(handles, paramName)
     %javaHandle = userData.javaHandle;
     if isnumeric(defaultValue)
         if length(defaultValue) > 1
-            keyboard;
-            % Convert from a comma separated list, ranges, etc. to a vector of numbers.
-            paramValue = str2num(get(paramProps, 'value')); %#ok<ST2NM>
+            % Convert from a comma separated list, ranges, etc. to a vector of numbers.            
+            paramValue = get(handles.(paramTag), 'String');
             convFunc = str2func(class(defaultValue));
             value = convFunc(paramValue);
             %GWS moved this
