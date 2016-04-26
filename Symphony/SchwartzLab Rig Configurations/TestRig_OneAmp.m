@@ -4,6 +4,7 @@ classdef TestRig_OneAmp < RigConfiguration
         displayName = 'TestRig - One Amp'
         micronsPerPixel = 1.0; %eventually add this to device object
         frameTrackerPosition = [100, 100];
+        projectorAngleOffset = 0;
     end
     
     methods      
