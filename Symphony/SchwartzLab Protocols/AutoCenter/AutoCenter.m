@@ -15,18 +15,18 @@ classdef AutoCenter < StageProtocol
         %in microns, use rigConfig to set microns per pixel
         spotDiameter = 22; %um
         searchDiameter = 300; %um
-        alignmentSpotDiameter = 150;
+        alignSpotDiam = 150;
 %         numSpots = 100;
         mapResolution = 40; % um
         spotTotalTime = 0.3;
         spotOnTime = 0.1;
-        exVoltage = -60; %mV
-        inVoltage = 20; %mV
-        
+
         numPointSets = 2;
-        
+
+        voltages = [-60,20];        
         alternateVoltage = false; % WC only
         interactiveMode = false;
+        epochTimeLimit = 80; %s
         
         valueMin = 0.1;
         valueMax = 1.0;
@@ -74,16 +74,20 @@ classdef AutoCenter < StageProtocol
                 case {'spotTotalTime','spotOnTime'}
                     p.units = 's';
                     p.displayTab = 'mostUsed';
-                case {'startX', 'startY', 'spotDiameter','searchDiameter','mapResolution'}
+                case {'spotDiameter','searchDiameter','mapResolution'}
                     p.units = 'um';
                     p.displayTab = 'mostUsed';
-                case 'numSpots'
-                    p.displayTab = 'mostUsed';
+                case 'alignSpotDiam'
+                    p.units = 'um';
                 case 'intensity'
                     p.displayTab = 'mostUsed';
                     p.units = 'rel';
-                case 'responseDelay'
-                    p.units = 'msec';
+                case 'numPointSets'
+                    p.displayTab = 'mostUsed';
+                case 'epochTimeLimit'
+                    p.units = 's';     
+                case 'voltages'
+                    p.units = 'mV';
             end
         end
         
@@ -93,7 +97,7 @@ classdef AutoCenter < StageProtocol
             obj.sessionId = str2double(regexprep(num2str(fix(clock),'%1d'),' +','')); % this is how you get a datetime string number in MATLAB
             obj.epochNum = 0;
 %             obj.startTime = clock;
-            obj.autoContinueRun = 1;
+            obj.autoContinueRun = true;
             obj.pointSetIndex = 0;
             
             if strcmp(obj.ampMode, 'Cell attached')
@@ -130,15 +134,13 @@ classdef AutoCenter < StageProtocol
             
             % alternate ex/in for same spots and settings
             if obj.alternateVoltage
-                if obj.currentVoltageIndex == 1
-                    obj.ampHoldSignal = obj.exVoltage;
-                else  % inhibitory epoch, following Ex to mirror it
-                    obj.ampHoldSignal = obj.inVoltage;
+                obj.ampHoldSignal = obj.voltages(obj.currentVoltageIndex);
+                if obj.currentVoltageIndex ~= 1 % only generate a new stim if we're on the first voltage
                     generateNewStimulus = false;
                 end
-                fprintf('setting amp voltage: %d mV; waiting 6 sec for stability\n', obj.ampHoldSignal);
+                fprintf('setting amp voltage: %d mV; waiting 5 sec for stability\n', obj.ampHoldSignal);
                 obj.setDeviceBackground(obj.amp, obj.ampHoldSignal, 'mV'); % actually set it
-                pause(6)
+                pause(5)
             end
             
             if generateNewStimulus
@@ -147,21 +149,21 @@ classdef AutoCenter < StageProtocol
                 
                 p = struct();
                 p.generatePositions = true;
+                obj.pointSetIndex = obj.pointSetIndex + 1;
+                p.pointSetIndex = obj.pointSetIndex;                
                 p.spotDiameter = obj.spotDiameter; %um
                 p.mapResolution = obj.mapResolution;
                 p.searchDiameter = obj.searchDiameter;
 %                 p.numSpots = obj.numSpots;
                 p.spotTotalTime = obj.spotTotalTime;
                 p.spotOnTime = obj.spotOnTime;
-                p.alignmentSpotDiameter = obj.alignmentSpotDiameter;
+                p.alignmentSpotDiameter = obj.alignSpotDiam;
                 
                 p.valueMin = obj.valueMin;
                 p.valueMax = obj.valueMax;
                 p.numValues = obj.numValues;
                 p.numValueRepeats = obj.numValueRepeats;
                 p.epochNum = obj.epochNum;
-                obj.pointSetIndex = obj.pointSetIndex + 1;
-                p.pointSetIndex = obj.pointSetIndex;
                 
 %                 timeElapsed = etime(clock, obj.startTime);
 %                 p.timeRemainingSeconds = obj.runTimeSeconds - timeElapsed; %only update time remaining if new stim, so Inhibitory always runs
@@ -179,7 +181,7 @@ classdef AutoCenter < StageProtocol
                         increasedRes = false;
                         while true;
                             runConfig = generateShapeStimulus(p, analysisData); %#ok<*PROPLC,*PROP>
-                            if runConfig.stimTime > 80e3
+                            if runConfig.stimTime > 1e3 * obj.epochTimeLimit
                                 p.mapResolution = round(p.mapResolution * 1.1);
                                 increasedRes = true;
                             else
@@ -187,7 +189,7 @@ classdef AutoCenter < StageProtocol
                             end
                         end
                         if increasedRes
-                            fprintf('Epoch stim time too long (> 80 sec); increased map resolution to %d um\n', p.mapResolution)
+                            fprintf('Epoch stim time too long (> %d sec); increased map resolution to %d um\n', obj.epochTimeLimit, p.mapResolution)
                         end
                     end
                 else
@@ -279,15 +281,16 @@ classdef AutoCenter < StageProtocol
                 obj.autoStimTime = runConfig.stimTime;
             end
             
-            % always continue if we're alternating and this is an excitatory epoch
-            if obj.alternateVoltage && obj.currentVoltageIndex == 1
+            % always continue if we're alternating and this is not the last
+            % voltage to be used
+            if obj.alternateVoltage && obj.currentVoltageIndex ~= length(obj.voltages)
                 obj.autoContinueRun = true;
             else
-                obj.autoContinueRun = obj.runConfig.autoContinueRun;
+                obj.autoContinueRun = obj.runConfig.autoContinueRun || obj.pointSetIndex <= obj.numPointSets;
             end
             
             % set next epoch voltage to alternate
-            nextIndices = [2;1];
+            nextIndices = [(2:length(obj.voltages)), 1];
             obj.currentVoltageIndex = nextIndices(obj.currentVoltageIndex);
             
             epoch.addParameter('sessionId',obj.sessionId);
