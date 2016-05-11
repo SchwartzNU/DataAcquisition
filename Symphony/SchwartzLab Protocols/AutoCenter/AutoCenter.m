@@ -150,7 +150,7 @@ classdef AutoCenter < StageProtocol
                 p = struct();
                 p.generatePositions = true;
                 obj.pointSetIndex = obj.pointSetIndex + 1;
-                p.pointSetIndex = obj.pointSetIndex;                
+                p.pointSetIndex = obj.pointSetIndex;
                 p.spotDiameter = obj.spotDiameter; %um
                 p.mapResolution = obj.mapResolution;
                 p.searchDiameter = obj.searchDiameter;
@@ -239,16 +239,16 @@ classdef AutoCenter < StageProtocol
                             p.adaptationSpotPositions = 100 * [-1,0; 0,0];%input('adaptation spot position [x1, y1]? ');
 %                             p.adaptationSpotPositions = generatePositions('triangular', [100, 100]);
 %                             p.adaptationSpotPositions = 120 * 
-                            p.adaptationSpotFrequency = 20;%input('flicker frequency? ');
+                            p.adaptationSpotFrequency = 15;%input('flicker frequency? ');
                             p.adaptationSpotDiameter = 4; %input('adaptation spot diameter? ');
                             p.adaptationSpotIntensity = 1.0;
-                            p.probeSpotDiameter = 13; %input('probe spot diameter? ');
+                            p.probeSpotDiameter = 20; %input('probe spot diameter? ');
                             p.probeSpotDuration = .25; %input('probe spot duration? (sec) ');
                             p.adaptSpotWarmupTime = 8;
-                            p.probeSpotPositionRadius = 60;
+                            p.probeSpotPositionRadius = 120;
                             p.probeSpotSpacing = 20;
                             p.probeSpotRepeats = 2;
-                            p.probeSpotValues = [0.1, .3];
+                            p.probeSpotValues = [0.1, 0.5];
                             
                         elseif strcmp(imode, 'refvar')
                             p.mode = 'refineVariance';
