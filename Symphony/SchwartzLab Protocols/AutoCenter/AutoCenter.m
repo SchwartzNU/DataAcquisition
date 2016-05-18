@@ -41,7 +41,7 @@ classdef AutoCenter < StageProtocol
     
     properties (Hidden)
         shapeResponseFigure
-        shapeResponseFigureWC
+        shapeResponseFigure2
         %         positions
         shapeDataMatrix
         shapeDataColumns
@@ -109,6 +109,9 @@ classdef AutoCenter < StageProtocol
             
             obj.shapeResponseFigure = obj.openFigure('Shape Response', obj.amp, 'StartTime', obj.stimStart, 'EndTime', obj.stimEnd,...
                 'SpikeDetectorMode', obj.spikeDetection, 'SpikeThreshold', obj.spikeThreshold, 'shapePlotMode','plotSpatial_mean');
+            
+            obj.shapeResponseFigure2 = obj.openFigure('Shape Response 2', obj.amp, 'StartTime', obj.stimStart, 'EndTime', obj.stimEnd,...
+                'SpikeDetectorMode', obj.spikeDetection, 'SpikeThreshold', obj.spikeThreshold, 'shapePlotMode','temporalResponses');
             
             
 %             if strcmp(obj.ampMode, 'Whole cell')
