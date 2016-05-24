@@ -122,11 +122,11 @@ classdef ShapeResponseFigureHandler < FigureHandler
 %             disp(obj.outputData)
 %             figure(11)
             clf;
-%             if strcmp(obj.shapePlotMode, 'plotSpatial_mean') && obj.epochIndex == 1
-%                 spm = 'temporalAlignment';
-%             else
-            spm = obj.shapePlotMode;
-%             end
+            if strcmp(obj.shapePlotMode, 'plotSpatial_mean') && obj.epochIndex == 1
+                spm = 'temporalResponses';
+            else
+                spm = obj.shapePlotMode;
+            end
             plotShapeData(obj.analysisData, spm);
         end
         
