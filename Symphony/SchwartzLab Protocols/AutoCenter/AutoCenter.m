@@ -110,9 +110,9 @@ classdef AutoCenter < StageProtocol
             obj.shapeResponseFigure = obj.openFigure('Shape Response', obj.amp, 'StartTime', obj.stimStart, 'EndTime', obj.stimEnd,...
                 'SpikeDetectorMode', obj.spikeDetection, 'SpikeThreshold', obj.spikeThreshold, 'shapePlotMode','plotSpatial_mean');
             
-            obj.shapeResponseFigure2 = obj.openFigure('Shape Response 2', obj.amp, 'StartTime', obj.stimStart, 'EndTime', obj.stimEnd,...
-                'SpikeDetectorMode', obj.spikeDetection, 'SpikeThreshold', obj.spikeThreshold, 'shapePlotMode','temporalResponses');
-            
+%             obj.shapeResponseFigure2 = obj.openFigure('Shape Response', obj.amp, 'StartTime', obj.stimStart, 'EndTime', obj.stimEnd,...
+%                 'SpikeDetectorMode', obj.spikeDetection, 'SpikeThreshold', obj.spikeThreshold, 'shapePlotMode','temporalResponses');
+%             
             
 %             if strcmp(obj.ampMode, 'Whole cell')
 %                 obj.shapeResponseFigureWC = obj.openFigure('Shape Response', obj.amp, 'StartTime', obj.stimStart, 'EndTime', obj.stimEnd,...
@@ -198,6 +198,7 @@ classdef AutoCenter < StageProtocol
                 else
                     % INTERACTIVE MODE
                     % TODO: convert to GUI
+                    obj.autoContinueRun = true;
                     while true % loop preference setup until we make the choices we like
                         
                         
@@ -239,19 +240,19 @@ classdef AutoCenter < StageProtocol
                             p.mode = 'adaptationRegion';
 %                             p.adaptationSpotPositions = 100 * [1,1; -1,-1; 1, -1; -1, 1];%input('adaptation spot position [x1, y1]? ');
                             
-                            p.adaptationSpotPositions = 100 * [-1,0; 0,0];%input('adaptation spot position [x1, y1]? ');
+                            p.adaptationSpotPositions = 100 * [0,0];%input('adaptation spot position [x1, y1]? ');
 %                             p.adaptationSpotPositions = generatePositions('triangular', [100, 100]);
 %                             p.adaptationSpotPositions = 120 * 
-                            p.adaptationSpotFrequency = 15;%input('flicker frequency? ');
-                            p.adaptationSpotDiameter = 4; %input('adaptation spot diameter? ');
+                            p.adaptationSpotFrequency = 12;%input('flicker frequency? ');
+                            p.adaptationSpotDiameter = 15; %input('adaptation spot diameter? ');
                             p.adaptationSpotIntensity = 1.0;
-                            p.probeSpotDiameter = 20; %input('probe spot diameter? ');
-                            p.probeSpotDuration = .25; %input('probe spot duration? (sec) ');
-                            p.adaptSpotWarmupTime = 8;
-                            p.probeSpotPositionRadius = 120;
-                            p.probeSpotSpacing = 20;
+                            p.probeSpotDiameter = 12; %input('probe spot diameter? ');
+                            p.probeSpotDuration = .3; %input('probe spot duration? (sec) ');
+                            p.adaptSpotWarmupTime = 6;
+                            p.probeSpotPositionRadius = 80;
+                            p.probeSpotSpacing = 25;
                             p.probeSpotRepeats = 2;
-                            p.probeSpotValues = [0.1, 0.5];
+                            p.probeSpotValues = [1];
                             
                         elseif strcmp(imode, 'refvar')
                             p.mode = 'refineVariance';
@@ -264,6 +265,7 @@ classdef AutoCenter < StageProtocol
                             
                         elseif strcmp(imode, 'quit')
                             p.mode = 'null';
+                            obj.autoContinueRun = false;
                         end
                         
                         runConfig = generateShapeStimulus(p, analysisData); %#ok<*PROPLC,*PROP>
